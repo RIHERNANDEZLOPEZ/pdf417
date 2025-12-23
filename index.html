@@ -91,6 +91,7 @@
         <button id="toggleTorchBtn" type="button">Flash: OFF</button>
     </div>
 
+    <pre id="cameraOptions" style="background:#222;color:#fff;padding:10px;"></pre>
     <video id="video" autoplay playsinline></video>
     <button id="takePhoto" style="display:none;">Tomar fotografía</button>
     <img id="photo" />
@@ -201,6 +202,25 @@
                 }
             }
 
+            // Mostrar las opciones actuales de la cámara en JSON
+            async function updateCameraOptionsDisplay() {
+                if (currentTrack && typeof currentTrack.getSettings === 'function' && typeof currentTrack.getConstraints === 'function' && typeof currentTrack.getCapabilities === 'function') {
+                    const info = {
+                        settings: currentTrack.getSettings(),
+                        constraints: currentTrack.getConstraints(),
+                        capabilities: currentTrack.getCapabilities()
+                    };
+                    cameraOptions.textContent = JSON.stringify(info, null, 2);
+                } else {
+                    cameraOptions.textContent = 'No disponible';
+                }
+            }
+
+            // Llama a updateCameraOptionsDisplay después de cada cambio relevante
+            function updateAndShowCameraOptions() {
+                updateCameraOptionsDisplay();
+            }
+
             async function startCameraWithOptions() {
                 if (stream) {
                     stream.getTracks().forEach(track => track.stop());
@@ -243,6 +263,7 @@
                         }
                     }
                     await applyCameraControls(currentTrack);
+                    updateAndShowCameraOptions();
                 } catch (err) {
                     output.textContent = 'No se pudo acceder a la cámara.';
                 }
@@ -347,6 +368,7 @@
                     }
 
                     await applyCameraControls(currentTrack);
+                    updateAndShowCameraOptions();
 
                     // Escanear cada 2 segundos
                     scanInterval = setInterval(() => {
@@ -385,23 +407,34 @@
                 }
             });
 
+            // Mostrar las opciones actuales de la cámara al cargar
+            updateCameraOptionsDisplay();
+
+            [brightness, contrast, grayscale, exposure, whiteBalance, zoom, sharpen].forEach(ctrl => {
+                ctrl.addEventListener('input', function () {
+                    updateVideoFilter();
+                    if (currentTrack) applyCameraControls(currentTrack).then(updateAndShowCameraOptions);
+                    else updateAndShowCameraOptions();
+                });
+            });
+
             toggleFocusBtn.addEventListener('click', function () {
                 autofocusEnabled = !autofocusEnabled;
                 toggleFocusBtn.textContent = 'Autofocus: ' + (autofocusEnabled ? 'ON' : 'OFF');
-                // Si la cámara está activa, reiníciala con el nuevo ajuste
-                if (video.style.display === 'block') startCameraWithOptions();
+                if (video.style.display === 'block') startCameraWithOptions().then(updateAndShowCameraOptions);
             });
 
             toggleAiBtn.addEventListener('click', function () {
                 aiCorrectionEnabled = !aiCorrectionEnabled;
                 toggleAiBtn.textContent = 'Corrección IA: ' + (aiCorrectionEnabled ? 'ON' : 'OFF');
-                if (video.style.display === 'block') startCameraWithOptions();
+                if (video.style.display === 'block') startCameraWithOptions().then(updateAndShowCameraOptions);
             });
 
             toggleTorchBtn.addEventListener('click', function () {
                 torchEnabled = !torchEnabled;
                 toggleTorchBtn.textContent = 'Flash: ' + (torchEnabled ? 'ON' : 'OFF');
-                if (currentTrack) applyCameraControls(currentTrack);
+                if (currentTrack) applyCameraControls(currentTrack).then(updateAndShowCameraOptions);
+                else updateAndShowCameraOptions();
             });
 
             // Función para decodificar PDF417 desde una imagen
