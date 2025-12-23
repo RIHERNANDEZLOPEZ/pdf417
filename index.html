@@ -76,6 +76,19 @@
             Nitidez
             <input type="range" id="sharpen" min="0" max="2" step="0.01" value="0">
         </label>
+        <label>
+            Exposición
+            <input type="range" id="exposure" min="-4" max="4" step="0.1" value="0">
+        </label>
+        <label>
+            Balance de blancos
+            <input type="range" id="whiteBalance" min="2000" max="8000" step="100" value="4500">
+        </label>
+        <label>
+            Zoom
+            <input type="range" id="zoom" min="1" max="5" step="0.1" value="1">
+        </label>
+        <button id="toggleTorchBtn" type="button">Flash: OFF</button>
     </div>
 
     <video id="video" autoplay playsinline></video>
@@ -103,10 +116,15 @@
             const quality = document.getElementById('quality');
             const grayscale = document.getElementById('grayscale');
             const sharpen = document.getElementById('sharpen');
+            const exposure = document.getElementById('exposure');
+            const whiteBalance = document.getElementById('whiteBalance');
+            const zoom = document.getElementById('zoom');
             const toggleFocusBtn = document.getElementById('toggleFocusBtn');
             const toggleAiBtn = document.getElementById('toggleAiBtn');
+            const toggleTorchBtn = document.getElementById('toggleTorchBtn');
             let autofocusEnabled = false;
             let aiCorrectionEnabled = false;
+            let torchEnabled = false;
             let currentTrack = null;
 
             fileInput.addEventListener('change', function (e) {
@@ -150,6 +168,39 @@
                 ctrl.addEventListener('input', updateVideoFilter);
             });
 
+            async function applyCameraControls(track) {
+                if (!track || typeof track.getCapabilities !== 'function') return;
+                const caps = track.getCapabilities();
+                const constraints = {};
+
+                // Exposición
+                if (caps.exposureCompensation) {
+                    constraints.advanced = constraints.advanced || [];
+                    constraints.advanced.push({ exposureCompensation: parseFloat(exposure.value) });
+                }
+                // Balance de blancos
+                if (caps.whiteBalanceMode && caps.whiteBalanceMode.includes('manual') && caps.colorTemperature) {
+                    constraints.advanced = constraints.advanced || [];
+                    constraints.advanced.push({
+                        whiteBalanceMode: 'manual',
+                        colorTemperature: parseInt(whiteBalance.value)
+                    });
+                }
+                // Zoom
+                if (caps.zoom) {
+                    constraints.advanced = constraints.advanced || [];
+                    constraints.advanced.push({ zoom: parseFloat(zoom.value) });
+                }
+                // Torch/Flash
+                if (caps.torch) {
+                    constraints.advanced = constraints.advanced || [];
+                    constraints.advanced.push({ torch: torchEnabled });
+                }
+                if (Object.keys(constraints).length > 0) {
+                    try { await track.applyConstraints(constraints); } catch (e) {}
+                }
+            }
+
             async function startCameraWithOptions() {
                 if (stream) {
                     stream.getTracks().forEach(track => track.stop());
@@ -176,10 +227,7 @@
                     takePhoto.style.display = 'inline-block';
                     photo.style.display = 'none';
                     updateVideoFilter();
-
-                    // Guarda el track para controles posteriores
                     currentTrack = stream.getVideoTracks()[0];
-
                     // Intenta aplicar autofocus si está habilitado y soportado
                     if (autofocusEnabled && currentTrack && typeof currentTrack.getCapabilities === 'function') {
                         const caps = currentTrack.getCapabilities();
@@ -194,6 +242,7 @@
                             currentTrack.applyConstraints({ advanced: [{ imageStabilization: true }] });
                         }
                     }
+                    await applyCameraControls(currentTrack);
                 } catch (err) {
                     output.textContent = 'No se pudo acceder a la cámara.';
                 }
@@ -283,9 +332,7 @@
                     output.textContent = 'Escaneando en tiempo real...';
                     scanningActive = true;
                     updateVideoFilter();
-
                     currentTrack = stream.getVideoTracks()[0];
-
                     if (autofocusEnabled && currentTrack && typeof currentTrack.getCapabilities === 'function') {
                         const caps = currentTrack.getCapabilities();
                         if (caps.focusMode && caps.focusMode.includes('continuous')) {
@@ -298,6 +345,8 @@
                             currentTrack.applyConstraints({ advanced: [{ imageStabilization: true }] });
                         }
                     }
+
+                    await applyCameraControls(currentTrack);
 
                     // Escanear cada 2 segundos
                     scanInterval = setInterval(() => {
@@ -347,6 +396,12 @@
                 aiCorrectionEnabled = !aiCorrectionEnabled;
                 toggleAiBtn.textContent = 'Corrección IA: ' + (aiCorrectionEnabled ? 'ON' : 'OFF');
                 if (video.style.display === 'block') startCameraWithOptions();
+            });
+
+            toggleTorchBtn.addEventListener('click', function () {
+                torchEnabled = !torchEnabled;
+                toggleTorchBtn.textContent = 'Flash: ' + (torchEnabled ? 'ON' : 'OFF');
+                if (currentTrack) applyCameraControls(currentTrack);
             });
 
             // Función para decodificar PDF417 desde una imagen
