@@ -19,20 +19,32 @@
             padding: 10px;
         }
 
-        img {
+        img,
+        video {
             max-width: 300px;
             display: block;
             margin-top: 10px;
+        }
+
+        #video {
+            display: none;
+        }
+
+        #photo {
+            display: none;
         }
     </style>
 </head>
 
 <body>
 
-    <h3>Detectar PDF417 desde imagen</h3>
+    <h3>Detectar PDF417 desde imagen o cámara</h3>
 
     <input type="file" id="fileInput" accept="image/*">
-    <img id="preview" />
+    <button id="startCamera">Encender cámara</button>
+    <video id="video" autoplay playsinline></video>
+    <button id="takePhoto" style="display:none;">Tomar fotografía</button>
+    <img id="photo" />
     <pre id="output"></pre>
 
     <script>
@@ -45,6 +57,10 @@
             const fileInput = document.getElementById('fileInput');
             const preview = document.getElementById('preview');
             const output = document.getElementById('output');
+            const startCamera = document.getElementById('startCamera');
+            const video = document.getElementById('video');
+            const takePhoto = document.getElementById('takePhoto');
+            const photo = document.getElementById('photo');
 
             fileInput.addEventListener('change', function (e) {
                 const file = e.target.files[0];
@@ -71,6 +87,46 @@
                 };
             });
 
+            let stream = null;
+
+            startCamera.addEventListener('click', async function () {
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                }
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                    video.srcObject = stream;
+                    video.style.display = 'block';
+                    takePhoto.style.display = 'inline-block';
+                    photo.style.display = 'none';
+                } catch (err) {
+                    output.textContent = 'No se pudo acceder a la cámara.';
+                }
+            });
+
+            takePhoto.addEventListener('click', function () {
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const dataUrl = canvas.toDataURL('image/jpeg', 1.0);
+                photo.src = dataUrl;
+                photo.style.display = 'block';
+                decodificarPDF417FromImage(photo);
+            });
+
+            // Función para decodificar PDF417 desde una imagen
+            window.decodificarPDF417FromImage = function (imgElement) {
+                output.textContent = 'Procesando imagen...';
+                codeReader.decodeFromImage(imgElement)
+                    .then(result => {
+                        output.textContent = '✅ PDF417 detectado:\n\n' + result.text;
+                    })
+                    .catch(err => {
+                        output.textContent = '❌ No se detectó ningún PDF417 en la imagen.';
+                    });
+            };
         });
     </script>
 
