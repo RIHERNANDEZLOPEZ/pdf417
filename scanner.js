@@ -25,11 +25,11 @@ class PDF417LicenseScanner {
             cameraSelect: document.getElementById('cameraSelect'),
             tryHarderToggle: document.getElementById('tryHarderToggle'),
             scanAgainBtn: document.getElementById('scanAgainButton'),
-            
+
             // Paneles
             scannerPanel: document.getElementById('scannerPanel'),
             resultsPanel: document.getElementById('resultsPanel'),
-            
+
             // Resultados
             licenseNumber: document.getElementById('licenseNumber'),
             fullName: document.getElementById('fullName'),
@@ -38,18 +38,18 @@ class PDF417LicenseScanner {
             state: document.getElementById('state'),
             address: document.getElementById('address'),
             rawData: document.getElementById('rawData'),
-            
+
             // Estado
             statusIcon: document.getElementById('statusIcon'),
             statusText: document.getElementById('statusText'),
             fpsCounter: document.getElementById('fpsCounter'),
-            
+
             // Depuración
             debugCameraStatus: document.getElementById('debugCameraStatus'),
             debugResolution: document.getElementById('debugResolution'),
             debugLastScan: document.getElementById('debugLastScan'),
             debugFailedAttempts: document.getElementById('debugFailedAttempts'),
-            
+
             // Validación
             formatValid: document.getElementById('formatValid'),
             checksumValid: document.getElementById('checksumValid'),
@@ -72,17 +72,17 @@ class PDF417LicenseScanner {
     // Inicializar ZXing
     initZXing() {
         const { BrowserMultiFormatReader, BarcodeFormat } = window.ZXing;
-        
+
         // Configurar formatos que queremos leer (solo PDF417)
         this.codeReader = new BrowserMultiFormatReader();
-        
+
         // Crear hints personalizados para PDF417
         this.codeReader.hints = new Map();
         this.codeReader.hints.set(
             BrowserMultiFormatReader.DECODE_HINT,
             new Set([BarcodeFormat.PDF_417])
         );
-        
+
         console.log('ZXing inicializado para PDF417');
     }
 
@@ -92,14 +92,14 @@ class PDF417LicenseScanner {
         this.elements.stopBtn.addEventListener('click', () => this.stopCamera());
         this.elements.scanAgainBtn.addEventListener('click', () => this.showScanner());
         this.elements.cameraSelect.addEventListener('change', (e) => this.switchCamera(e.target.value));
-        
+
         // Copiar datos crudos
         document.getElementById('copyRawData').addEventListener('click', () => {
             navigator.clipboard.writeText(this.elements.rawData.textContent)
                 .then(() => this.showToast('📋 Datos copiados al portapapeles'))
                 .catch(err => console.error('Error al copiar:', err));
         });
-        
+
         // Mostrar/ocultar datos crudos
         document.getElementById('toggleRawData').addEventListener('click', () => {
             const rawData = this.elements.rawData;
@@ -112,10 +112,10 @@ class PDF417LicenseScanner {
         try {
             this.updateStatus('⏳ Iniciando cámara...', 'warning');
             this.elements.startBtn.disabled = true;
-            
+
             // Obtener lista de cámaras
             await this.getCameraList();
-            
+
             // Configurar restricciones
             const constraints = {
                 video: {
@@ -125,43 +125,43 @@ class PDF417LicenseScanner {
                     facingMode: 'environment'
                 }
             };
-            
+
             // Usar cámara seleccionada si hay
             if (this.state.selectedCamera) {
                 constraints.video.deviceId = { exact: this.state.selectedCamera };
             }
-            
+
             // Obtener stream
             const stream = await navigator.mediaDevices.getUserMedia(constraints);
             this.state.currentStream = stream;
-            
+
             // Configurar video
             this.elements.video.srcObject = stream;
-            
+
             // Esperar a que el video esté listo
             await new Promise((resolve) => {
                 this.elements.video.onloadedmetadata = () => {
                     this.elements.video.play().then(resolve);
                 };
             });
-            
+
             // Actualizar estado
             this.state.isCameraActive = true;
             this.state.isScanning = true;
             this.state.scanStartTime = Date.now();
             this.state.frameCount = 0;
             this.state.lastFpsUpdate = Date.now();
-            
+
             this.updateStatus('🔍 Escaneando PDF417...', 'scanning');
             this.updateControls(true);
             this.updateDebugInfo();
-            
+
             // Iniciar loop de escaneo
             this.scanLoop();
-            
+
             // Iniciar actualización de FPS
             this.updateFPS();
-            
+
         } catch (error) {
             console.error('Error al iniciar cámara:', error);
             this.updateStatus(`❌ Error: ${error.message}`, 'error');
@@ -175,10 +175,10 @@ class PDF417LicenseScanner {
         try {
             const devices = await navigator.mediaDevices.enumerateDevices();
             this.state.cameras = devices.filter(device => device.kind === 'videoinput');
-            
+
             // Limpiar selector
             this.elements.cameraSelect.innerHTML = '<option value="">Seleccionar cámara...</option>';
-            
+
             // Poblar selector
             this.state.cameras.forEach((camera, index) => {
                 const option = document.createElement('option');
@@ -186,21 +186,21 @@ class PDF417LicenseScanner {
                 option.text = camera.label || `Cámara ${index + 1}`;
                 this.elements.cameraSelect.appendChild(option);
             });
-            
+
             this.elements.cameraSelect.disabled = false;
-            
+
             // Seleccionar cámara trasera por defecto
-            const backCamera = this.state.cameras.find(cam => 
-                cam.label.toLowerCase().includes('back') || 
+            const backCamera = this.state.cameras.find(cam =>
+                cam.label.toLowerCase().includes('back') ||
                 cam.label.toLowerCase().includes('rear') ||
                 cam.label.toLowerCase().includes('environment')
             );
-            
+
             if (backCamera) {
                 this.state.selectedCamera = backCamera.deviceId;
                 this.elements.cameraSelect.value = backCamera.deviceId;
             }
-            
+
         } catch (error) {
             console.warn('No se pudieron listar cámaras:', error);
         }
@@ -209,36 +209,36 @@ class PDF417LicenseScanner {
     // Loop principal de escaneo
     async scanLoop() {
         if (!this.state.isScanning) return;
-        
+
         const now = Date.now();
-        
+
         // Control FPS - no escanear más de 10 veces por segundo
         if (now - this.state.lastScanTime < 100) {
             requestAnimationFrame(() => this.scanLoop());
             return;
         }
-        
+
         this.state.lastScanTime = now;
         this.state.frameCount++;
-        
+
         try {
             // Capturar frame
             this.captureFrame();
-            
+
             // Intentar decodificar con ZXing
             const result = await this.decodeWithZXing();
-            
+
             if (result) {
                 // ¡Código detectado!
                 this.handleScanSuccess(result);
                 return;
             }
-            
+
         } catch (error) {
             this.state.failedAttempts++;
             // No mostrar errores normales (es esperado que falle frecuentemente)
         }
-        
+
         // Continuar loop
         if (this.state.isScanning) {
             requestAnimationFrame(() => this.scanLoop());
@@ -248,7 +248,7 @@ class PDF417LicenseScanner {
     // Capturar frame actual
     captureFrame() {
         const video = this.elements.video;
-        
+
         // Solo actualizar canvas si es necesario para depuración
         if (this.elements.tryHarderToggle.checked) {
             this.canvas.width = video.videoWidth;
@@ -260,7 +260,7 @@ class PDF417LicenseScanner {
     // Decodificar con ZXing
     async decodeWithZXing() {
         if (!this.codeReader || !this.state.isScanning) return null;
-        
+
         try {
             // Configurar hints
             const hints = new Map();
@@ -268,15 +268,15 @@ class PDF417LicenseScanner {
                 this.codeReader.DECODE_HINT,
                 new Set([window.ZXing.BarcodeFormat.PDF_417])
             );
-            
+
             hints.set(
                 this.codeReader.TRY_HARDER_HINT,
                 this.elements.tryHarderToggle.checked
             );
-            
+
             // Decodificar desde el elemento de video
             const result = await this.codeReader.decodeFromVideoElement(
-                null, // Usar video por defecto (el primero)
+
                 this.elements.video,
                 (result, error) => {
                     if (result) return result;
@@ -286,9 +286,9 @@ class PDF417LicenseScanner {
                     return null;
                 }
             );
-            
+
             return result;
-            
+
         } catch (error) {
             if (error instanceof window.ZXing.NotFoundException) {
                 // No se encontró código - esto es normal
@@ -302,16 +302,16 @@ class PDF417LicenseScanner {
     // Manejar escaneo exitoso
     handleScanSuccess(result) {
         console.log('✅ Código PDF417 detectado:', result);
-        
+
         // Detener escaneo
         this.stopCamera();
-        
+
         // Procesar datos
         this.processLicenseData(result.text);
-        
+
         // Mostrar resultados
         this.showResults();
-        
+
         // Feedback
         this.updateStatus('✅ Licencia detectada', 'success');
         this.playSuccessSound();
@@ -321,13 +321,13 @@ class PDF417LicenseScanner {
     // Procesar datos de la licencia
     processLicenseData(rawText) {
         console.log('Procesando datos AAMVA:', rawText);
-        
+
         // Guardar datos crudos
         this.elements.rawData.textContent = rawText;
-        
+
         // Parsear formato AAMVA básico
         const licenseData = this.parseAAMVA(rawText);
-        
+
         // Actualizar UI
         this.elements.licenseNumber.textContent = licenseData.licenseNumber || 'No encontrado';
         this.elements.fullName.textContent = licenseData.fullName || 'No encontrado';
@@ -335,10 +335,10 @@ class PDF417LicenseScanner {
         this.elements.expiryDate.textContent = licenseData.expiryDateFormatted || 'No encontrado';
         this.elements.state.textContent = licenseData.stateName || 'No encontrado';
         this.elements.address.textContent = licenseData.fullAddress || 'No encontrado';
-        
+
         // Validaciones
         this.updateValidations(licenseData);
-        
+
         // Actualizar depuración
         this.state.totalScans++;
         this.elements.debugLastScan.textContent = new Date().toLocaleTimeString();
@@ -348,13 +348,13 @@ class PDF417LicenseScanner {
     parseAAMVA(rawText) {
         const lines = rawText.split('\n');
         const data = {};
-        
+
         lines.forEach(line => {
             if (line.length >= 3) {
                 const code = line.substring(0, 3);
                 const value = line.substring(3).trim();
-                
-                switch(code) {
+
+                switch (code) {
                     case 'DAQ': data.licenseNumber = value; break;
                     case 'DCS': data.lastName = value; break;
                     case 'DAC': data.firstName = value; break;
@@ -372,34 +372,34 @@ class PDF417LicenseScanner {
                 }
             }
         });
-        
+
         // Formatear datos
         data.fullName = `${data.firstName || ''} ${data.middleName || ''} ${data.lastName || ''}`.trim();
         data.fullAddress = [data.streetAddress, data.city, data.state, data.zipCode]
             .filter(Boolean)
             .join(', ');
-        
+
         // Formatear fechas
         data.birthDateFormatted = this.formatDate(data.birthDate);
         data.expiryDateFormatted = this.formatDate(data.expiryDate);
-        
+
         // Nombre del estado
         data.stateName = this.getStateName(data.state);
-        
+
         return data;
     }
 
     // Formatear fecha
     formatDate(dateStr) {
         if (!dateStr) return '';
-        
+
         // Formato YYYY-MM-DD
         const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
         if (match) {
             const [, year, month, day] = match;
             return `${day}/${month}/${year}`;
         }
-        
+
         return dateStr;
     }
 
@@ -422,7 +422,7 @@ class PDF417LicenseScanner {
             'VA': 'Virginia', 'WA': 'Washington', 'WV': 'West Virginia',
             'WI': 'Wisconsin', 'WY': 'Wyoming', 'DC': 'District of Columbia'
         };
-        
+
         return states[stateCode] || stateCode;
     }
 
@@ -432,7 +432,7 @@ class PDF417LicenseScanner {
         const hasRequiredFields = data.licenseNumber && data.lastName && data.firstName;
         this.elements.formatValid.textContent = hasRequiredFields ? '✅ Válido' : '❌ Inválido';
         this.elements.formatValid.style.color = hasRequiredFields ? '#00ff00' : '#ff0000';
-        
+
         // Validar fecha de expiración
         if (data.expiryDate) {
             const expiry = new Date(data.expiryDate);
@@ -444,7 +444,7 @@ class PDF417LicenseScanner {
             this.elements.expiryValid.textContent = '❓ Desconocida';
             this.elements.expiryValid.style.color = '#999';
         }
-        
+
         // Checksum (simulado - en realidad se necesita algoritmo específico)
         const hasValidLength = data.licenseNumber && data.licenseNumber.length >= 5;
         this.elements.checksumValid.textContent = hasValidLength ? '✅ Aprobado' : '⚠️ Dudoso';
@@ -454,9 +454,9 @@ class PDF417LicenseScanner {
     // Cambiar cámara
     async switchCamera(deviceId) {
         if (!deviceId) return;
-        
+
         this.state.selectedCamera = deviceId;
-        
+
         // Si hay cámara activa, reiniciar
         if (this.state.isCameraActive) {
             await this.stopCamera();
@@ -468,16 +468,16 @@ class PDF417LicenseScanner {
     async stopCamera() {
         this.state.isScanning = false;
         this.state.isCameraActive = false;
-        
+
         // Detener stream
         if (this.state.currentStream) {
             this.state.currentStream.getTracks().forEach(track => track.stop());
             this.state.currentStream = null;
         }
-        
+
         // Limpiar video
         this.elements.video.srcObject = null;
-        
+
         // Actualizar controles
         this.updateControls(false);
         this.updateStatus('⏹ Cámara detenida', 'stopped');
@@ -507,7 +507,7 @@ class PDF417LicenseScanner {
     // Actualizar estado
     updateStatus(message, type = 'info') {
         this.elements.statusText.textContent = message;
-        
+
         const icons = {
             'ready': '📷',
             'warning': '⚠️',
@@ -517,7 +517,7 @@ class PDF417LicenseScanner {
             'stopped': '⏹',
             'info': 'ℹ️'
         };
-        
+
         const colors = {
             'ready': '#0066ff',
             'warning': '#ff9800',
@@ -527,7 +527,7 @@ class PDF417LicenseScanner {
             'stopped': '#666',
             'info': '#999'
         };
-        
+
         this.elements.statusIcon.textContent = icons[type] || icons.info;
         this.elements.statusIcon.style.color = colors[type] || colors.info;
     }
@@ -535,17 +535,17 @@ class PDF417LicenseScanner {
     // Actualizar FPS
     updateFPS() {
         if (!this.state.isScanning) return;
-        
+
         const now = Date.now();
         const elapsed = now - this.state.lastFpsUpdate;
-        
+
         if (elapsed >= 1000) {
             this.state.fps = Math.round((this.state.frameCount * 1000) / elapsed);
             this.elements.fpsCounter.textContent = `${this.state.fps} FPS`;
             this.state.frameCount = 0;
             this.state.lastFpsUpdate = now;
         }
-        
+
         requestAnimationFrame(() => this.updateFPS());
     }
 
@@ -553,12 +553,12 @@ class PDF417LicenseScanner {
     updateDebugInfo() {
         this.elements.debugCameraStatus.textContent = this.state.isCameraActive ? 'Activa' : 'Inactiva';
         this.elements.debugCameraStatus.style.color = this.state.isCameraActive ? '#00ff00' : '#ff0000';
-        
+
         if (this.elements.video.videoWidth) {
-            this.elements.debugResolution.textContent = 
+            this.elements.debugResolution.textContent =
                 `${this.elements.video.videoWidth} × ${this.elements.video.videoHeight}`;
         }
-        
+
         this.elements.debugFailedAttempts.textContent = this.state.failedAttempts;
     }
 
@@ -568,19 +568,19 @@ class PDF417LicenseScanner {
             const audioContext = new (window.AudioContext || window.webkitAudioContext)();
             const oscillator = audioContext.createOscillator();
             const gainNode = audioContext.createGain();
-            
+
             oscillator.connect(gainNode);
             gainNode.connect(audioContext.destination);
-            
+
             oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
             oscillator.frequency.setValueAtTime(1200, audioContext.currentTime + 0.1);
-            
+
             gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
             gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-            
+
             oscillator.start(audioContext.currentTime);
             oscillator.stop(audioContext.currentTime + 0.3);
-            
+
         } catch (error) {
             // Silencioso en caso de error
         }
@@ -602,9 +602,9 @@ class PDF417LicenseScanner {
             animation: slideIn 0.3s ease;
             box-shadow: 0 5px 15px rgba(0,0,0,0.3);
         `;
-        
+
         document.body.appendChild(toast);
-        
+
         setTimeout(() => {
             toast.style.animation = 'slideOut 0.3s ease';
             setTimeout(() => toast.remove(), 300);
@@ -635,17 +635,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     `;
     document.head.appendChild(style);
-    
+
     // Crear instancia del escáner
     window.scanner = new PDF417LicenseScanner();
-    
+
     // Manejar cierre/recarga
     window.addEventListener('beforeunload', () => {
         if (window.scanner) {
             window.scanner.cleanup();
         }
     });
-    
+
     // Manejar visibilidad de la página
     document.addEventListener('visibilitychange', () => {
         if (document.hidden && window.scanner) {
