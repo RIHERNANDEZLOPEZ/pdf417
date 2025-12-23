@@ -1,160 +1,79 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Escáner de Licencias USA - PDF417 Real</title>
-    <link rel="stylesheet" href="styles.css">
-    <!-- ZXing Library (producción) -->
-    <script src="https://unpkg.com/@zxing/library@0.20.0"></script>
+    <title>Detectar PDF417</title>
+
+    <!-- Librería oficial ZXing en modo global -->
+    <script src="https://unpkg.com/@zxing/library@latest"></script>
+
+    <style>
+        body {
+            font-family: Arial;
+            padding: 20px;
+        }
+
+        pre {
+            background: #eee;
+            padding: 10px;
+        }
+
+        img {
+            max-width: 300px;
+            display: block;
+            margin-top: 10px;
+        }
+    </style>
 </head>
+
 <body>
-    <div class="container">
-        <header>
-            <h1>📷 Escáner de Licencia USA - PDF417</h1>
-            <p class="subtitle">Escanea el código de barras en el reverso de la licencia</p>
-        </header>
 
-        <div class="main-content">
-            <!-- Panel de cámara -->
-            <div id="scannerPanel" class="scanner-panel active">
-                <div class="camera-container">
-                    <div class="camera-controls">
-                        <button id="startButton" class="btn btn-primary">
-                            ▶ Iniciar Cámara
-                        </button>
-                        <button id="stopButton" class="btn btn-secondary" disabled>
-                            ⏹ Detener
-                        </button>
-                        <select id="cameraSelect" class="camera-select" disabled>
-                            <option value="">Seleccionar cámara...</option>
-                        </select>
-                        <div class="toggle-switch">
-                            <input type="checkbox" id="tryHarderToggle" checked>
-                            <label for="tryHarderToggle">Alta precisión</label>
-                        </div>
-                    </div>
+    <h3>Detectar PDF417 desde imagen</h3>
 
-                    <div class="video-wrapper">
-                        <video id="videoElement" playsinline></video>
-                        <div class="scan-frame">
-                            <div class="scan-line"></div>
-                            <div class="corner tl"></div>
-                            <div class="corner tr"></div>
-                            <div class="corner bl"></div>
-                            <div class="corner br"></div>
-                        </div>
-                    </div>
+    <input type="file" id="fileInput" accept="image/*">
+    <img id="preview" />
+    <pre id="output"></pre>
 
-                    <div class="status-display">
-                        <div class="status-icon" id="statusIcon">📷</div>
-                        <div class="status-text" id="statusText">Listo para escanear</div>
-                        <div class="fps-counter" id="fpsCounter">0 FPS</div>
-                    </div>
+    <script>
+        window.addEventListener('load', function () {
 
-                    <canvas id="debugCanvas" style="display: none;"></canvas>
-                </div>
+            // ✅ Lector específico para PDF417 (OFICIAL)
+            const codeReader = new ZXing.BrowserPDF417Reader();
+            console.log('ZXing PDF417 reader inicializado');
 
-                <div class="instructions">
-                    <h3>📋 Instrucciones:</h3>
-                    <ul>
-                        <li>Usa la cámara trasera para mejor calidad</li>
-                        <li>Mantén buena iluminación</li>
-                        <li>Asegúrate de que el código esté dentro del marco</li>
-                        <li>Evita reflejos en el plástico de la licencia</li>
-                        <li>Mantén la cámara estable</li>
-                    </ul>
-                </div>
-            </div>
+            const fileInput = document.getElementById('fileInput');
+            const preview = document.getElementById('preview');
+            const output = document.getElementById('output');
 
-            <!-- Panel de resultados -->
-            <div id="resultsPanel" class="results-panel" style="display: none;">
-                <div class="results-header">
-                    <h2>✅ Licencia Escaneada</h2>
-                    <button id="scanAgainButton" class="btn btn-success">
-                        🔄 Escanear otra
-                    </button>
-                </div>
+            fileInput.addEventListener('change', function (e) {
+                const file = e.target.files[0];
+                if (!file) return;
 
-                <div class="results-card">
-                    <div class="license-data">
-                        <h3>📇 Información Principal</h3>
-                        <table class="data-table">
-                            <tr>
-                                <th>Número de Licencia:</th>
-                                <td id="licenseNumber">-</td>
-                            </tr>
-                            <tr>
-                                <th>Nombre Completo:</th>
-                                <td id="fullName">-</td>
-                            </tr>
-                            <tr>
-                                <th>Fecha de Nacimiento:</th>
-                                <td id="birthDate">-</td>
-                            </tr>
-                            <tr>
-                                <th>Fecha de Expiración:</th>
-                                <td id="expiryDate">-</td>
-                            </tr>
-                            <tr>
-                                <th>Estado Emisor:</th>
-                                <td id="state">-</td>
-                            </tr>
-                            <tr>
-                                <th>Dirección:</th>
-                                <td id="address">-</td>
-                            </tr>
-                        </table>
-                    </div>
+                // Mostrar imagen
+                const url = URL.createObjectURL(file);
+                preview.src = url;
 
-                    <div class="raw-data-section">
-                        <h3>📊 Datos AAMVA Crudos</h3>
-                        <div class="raw-data-controls">
-                            <button id="copyRawData" class="btn btn-small">📋 Copiar</button>
-                            <button id="toggleRawData" class="btn btn-small">👁️ Mostrar/Ocultar</button>
-                        </div>
-                        <pre id="rawData" class="raw-data"></pre>
-                    </div>
+                preview.onload = function () {
+                    output.textContent = 'Procesando imagen...';
 
-                    <div class="validation-info">
-                        <h3>🔍 Información de Validación</h3>
-                        <div class="validation-grid">
-                            <div class="validation-item">
-                                <span class="validation-label">Formato Válido:</span>
-                                <span id="formatValid" class="validation-value">❓</span>
-                            </div>
-                            <div class="validation-item">
-                                <span class="validation-label">Checksum:</span>
-                                <span id="checksumValid" class="validation-value">❓</span>
-                            </div>
-                            <div class="validation-item">
-                                <span class="validation-label">Fecha Expiración:</span>
-                                <span id="expiryValid" class="validation-value">❓</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+                    // 🔍 Detectar / decodificar PDF417
+                    codeReader.decodeFromImage(preview)
+                        .then(result => {
+                            output.textContent =
+                                '✅ PDF417 detectado:\n\n' + result.text;
+                        })
+                        .catch(err => {
+                            output.textContent =
+                                '❌ No se detectó ningún PDF417 en la imagen.';
+                            console.error(err);
+                        });
+                };
+            });
 
-        <div class="debug-panel">
-            <h3>🐛 Información de Depuración</h3>
-            <div class="debug-info">
-                <div>Estado Cámara: <span id="debugCameraStatus">Inactiva</span></div>
-                <div>Resolución: <span id="debugResolution">-</span></div>
-                <div>Último Escaneo: <span id="debugLastScan">Nunca</span></div>
-                <div>Intentos Fallidos: <span id="debugFailedAttempts">0</span></div>
-            </div>
-        </div>
+        });
+    </script>
 
-        <footer>
-            <p class="disclaimer">
-                ⚠️ <strong>Uso Educativo:</strong> Esta herramienta procesa datos localmente.
-                No se envían datos a servidores externos. Cumple con las leyes de privacidad.
-            </p>
-        </footer>
-    </div>
-
-    <script src="scanner.js"></script>
 </body>
+
 </html>
