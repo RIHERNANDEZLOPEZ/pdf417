@@ -1,11 +1,35 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
+    <style>
+        #video {
+            width: 320px;
+            height: 240px;
+            border: 1px solid black;
+        }
+
+        #canvas {
+            display: none;
+        }
+
+        /* Oculta el canvas por defecto */
+    </style>
 </head>
+
 <body>
-    Test asd
+    <h1>Vista Previa de la Cámara</h1>
+    <!-- Muestra el video en vivo  -->
+    <video id="video" autoplay></video>
+    <button id="snap">Tomar Foto</button>
+    <!-- Para capturar la imagen  -->
+    <canvas id="canvas"></canvas>
+    <!-- Para mostrar la foto -->
+    <img id="photo" alt="Foto tomada">
+    <script src="app.js"></script>
 </body>
+hp_14k2iIvlqi3z8p3ZZ3XG16CCLNppfC2wP1j
 </html>
