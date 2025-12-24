@@ -1,456 +1,1002 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
     <meta charset="UTF-8">
-    <title>Detectar PDF417</title>
-
-    <!-- Librería oficial ZXing en modo global -->
-    <script src="https://unpkg.com/@zxing/library@latest"></script>
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Escáner PDF417 Avanzado</title>
+    <script type="text/javascript" src="https://unpkg.com/@zxing/library@latest"></script>
     <style>
+        * {
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
         body {
-            font-family: Arial;
+            margin: 0;
             padding: 20px;
+            background: #f5f5f5;
         }
 
-        pre {
-            background: #eee;
-            padding: 10px;
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
         }
 
-        img,
+        .camera-section {
+            flex: 1;
+            min-width: 500px;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .controls-section {
+            flex: 1;
+            min-width: 300px;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        h1, h2 {
+            color: #333;
+        }
+
         video {
-            max-width: 300px;
-            display: block;
-            margin-top: 10px;
+            width: 100%;
+            border-radius: 5px;
+            background: #000;
         }
 
-        #video {
+        .video-container {
+            position: relative;
+        }
+
+        .overlay-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .controls-group {
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .control {
+            margin: 10px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        label {
+            font-size: 14px;
+            color: #555;
+        }
+
+        input[type="range"] {
+            width: 60%;
+        }
+
+        input[type="checkbox"] {
+            transform: scale(1.2);
+        }
+
+        .buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            flex-grow: 1;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        #results {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e9ecef;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .hidden {
             display: none;
         }
 
-        #photo {
-            display: none;
-        }
-
-        .controls {
-            margin-top: 10px;
-            margin-bottom: 10px;
-        }
-
-        .controls label {
-            margin-right: 10px;
+        .processing-indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            z-index: 100;
         }
     </style>
 </head>
-
 <body>
+    <div class="container">
+        <section class="camera-section">
+            <h1>Escáner PDF417</h1>
+            <div class="video-container">
+                <video id="video" playsinline autoplay></video>
+                <canvas id="overlay" class="overlay-canvas"></canvas>
+                <div id="processingIndicator" class="processing-indicator hidden">
+                    Procesando...
+                </div>
+            </div>
+            <div class="buttons">
+                <button id="startButton">Iniciar Cámara</button>
+                <button id="stopButton">Detener Cámara</button>
+                <button id="captureButton">Capturar y Escanear</button>
+                <button id="toggleScan">Auto Escanear: Desactivado</button>
+                <button id="uploadButton">Subir Imagen</button>
+                <input type="file" id="fileInput" accept="image/*" hidden>
+            </div>
+            <div id="results">
+                Resultados aparecerán aquí...
+            </div>
+        </section>
 
-    <h3>Detectar PDF417 desde imagen o cámara</h3>
+        <section class="controls-section">
+            <h2>Controles de Procesamiento</h2>
+            <p>Activa/desactiva y ajusta los filtros para mejorar la detección.</p>
 
-    <input type="file" id="fileInput" accept="image/*">
-    <button id="startCamera">Encender cámara</button>
-    <button id="scanRealtime">Escanear en tiempo real</button>
-    <button id="toggleFocusBtn" type="button">Autofocus: OFF</button>
-    <button id="toggleAiBtn" type="button">Corrección IA: OFF</button>
+            <!-- Filtros básicos -->
+            <div class="controls-group">
+                <h3>Filtros Básicos</h3>
+                
+                <div class="control">
+                    <label for="grayscaleEnabled">Escala de grises</label>
+                    <input type="checkbox" id="grayscaleEnabled" checked>
+                </div>
+                <div class="control">
+                    <label for="grayscaleMethod">Método:</label>
+                    <select id="grayscaleMethod">
+                        <option value="luminance">Luminancia</option>
+                        <option value="average">Promedio</option>
+                        <option value="lightness">Claridad</option>
+                    </select>
+                </div>
 
-    <div class="controls">
-        <label>
-            Brillo
-            <input type="range" id="brightness" min="0" max="2" step="0.01" value="1">
-        </label>
-        <label>
-            Contraste
-            <input type="range" id="contrast" min="0" max="2" step="0.01" value="1">
-        </label>
-        <label>
-            Calidad
-            <input type="range" id="quality" min="0.1" max="1" step="0.01" value="1">
-        </label>
-        <label>
-            Blanco y negro
-            <input type="checkbox" id="grayscale">
-        </label>
-        <label>
-            Nitidez
-            <input type="range" id="sharpen" min="0" max="2" step="0.01" value="0">
-        </label>
-        <label>
-            Exposición
-            <input type="range" id="exposure" min="-4" max="4" step="0.1" value="0">
-        </label>
-        <label>
-            Balance de blancos
-            <input type="range" id="whiteBalance" min="2000" max="8000" step="100" value="4500">
-        </label>
-        <label>
-            Zoom
-            <input type="range" id="zoom" min="1" max="5" step="0.1" value="1">
-        </label>
-        <button id="toggleTorchBtn" type="button">Flash: OFF</button>
+                <div class="control">
+                    <label for="illuminationEnabled">Corrección de Iluminación</label>
+                    <input type="checkbox" id="illuminationEnabled" checked>
+                </div>
+                <div class="control">
+                    <label for="illuminationStrength">Fuerza:</label>
+                    <input type="range" id="illuminationStrength" min="0" max="1" step="0.1" value="0.7">
+                </div>
+
+                <div class="control">
+                    <label for="claheEnabled">CLAHE (Contraste Adaptativo)</label>
+                    <input type="checkbox" id="claheEnabled" checked>
+                </div>
+                <div class="control">
+                    <label for="claheContrast">Contraste CLAHE:</label>
+                    <input type="range" id="claheContrast" min="0.1" max="3" step="0.1" value="1.0">
+                </div>
+
+                <div class="control">
+                    <label for="denoisingEnabled">Reducción de Ruido</label>
+                    <input type="checkbox" id="denoisingEnabled" checked>
+                </div>
+                <div class="control">
+                    <label for="denoisingStrength">Fuerza:</label>
+                    <input type="range" id="denoisingStrength" min="0" max="1" step="0.1" value="0.5">
+                </div>
+            </div>
+
+            <!-- Binarización -->
+            <div class="controls-group">
+                <h3>Binarización</h3>
+                
+                <div class="control">
+                    <label for="adaptiveThresholdEnabled">Umbral Adaptativo</label>
+                    <input type="checkbox" id="adaptiveThresholdEnabled" checked>
+                </div>
+                <div class="control">
+                    <label for="thresholdMethod">Método:</label>
+                    <select id="thresholdMethod">
+                        <option value="sauvola">Sauvola</option>
+                        <option value="niblack">Niblack</option>
+                        <option value="bernsen">Bernsen</option>
+                    </select>
+                </div>
+                <div class="control">
+                    <label for="windowSize">Tamaño de Ventana:</label>
+                    <input type="range" id="windowSize" min="3" max="31" step="2" value="15">
+                </div>
+                <div class="control">
+                    <label for="kValue">Parámetro k:</label>
+                    <input type="range" id="kValue" min="0" max="0.5" step="0.01" value="0.2">
+                </div>
+            </div>
+
+            <!-- Filtros Avanzados -->
+            <div class="controls-group">
+                <h3>Filtros Avanzados</h3>
+                
+                <div class="control">
+                    <label for="shadowRemovalEnabled">Remoción de Sombras</label>
+                    <input type="checkbox" id="shadowRemovalEnabled" checked>
+                </div>
+                <div class="control">
+                    <label for="shadowIntensity">Intensidad:</label>
+                    <input type="range" id="shadowIntensity" min="0" max="1" step="0.1" value="0.8">
+                </div>
+
+                <div class="control">
+                    <label for="reflectionRemovalEnabled">Remoción de Reflejos</label>
+                    <input type="checkbox" id="reflectionRemovalEnabled" checked>
+                </div>
+                <div class="control">
+                    <label for="reflectionSensitivity">Sensibilidad:</label>
+                    <input type="range" id="reflectionSensitivity" min="0" max="1" step="0.1" value="0.6">
+                </div>
+
+                <div class="control">
+                    <label for="edgeEnhancementEnabled">Mejora de Bordes</label>
+                    <input type="checkbox" id="edgeEnhancementEnabled" checked>
+                </div>
+                <div class="control">
+                    <label for="edgeStrength">Fuerza:</label>
+                    <input type="range" id="edgeStrength" min="0" max="1" step="0.1" value="0.4">
+                </div>
+            </div>
+
+            <!-- Controles de Cámara -->
+            <div class="controls-group">
+                <h3>Controles de Cámara</h3>
+                
+                <div class="control">
+                    <label for="brightness">Brillo:</label>
+                    <input type="range" id="brightness" min="-1" max="1" step="0.1" value="0">
+                </div>
+                <div class="control">
+                    <label for="contrast">Contraste:</label>
+                    <input type="range" id="contrast" min="0" max="2" step="0.1" value="1">
+                </div>
+                <div class="control">
+                    <label for="saturation">Saturación:</label>
+                    <input type="range" id="saturation" min="0" max="2" step="0.1" value="1">
+                </div>
+                <div class="control">
+                    <label for="sharpness">Nitidez:</label>
+                    <input type="range" id="sharpness" min="-1" max="1" step="0.1" value="0">
+                </div>
+                <div class="control">
+                    <label for="zoom">Zoom:</label>
+                    <input type="range" id="zoom" min="1" max="5" step="0.1" value="1">
+                </div>
+            </div>
+
+            <!-- Botones de Configuración -->
+            <div class="buttons">
+                <button id="resetSettings">Restaurar Valores por Defecto</button>
+                <button id="saveSettings">Guardar Configuración</button>
+                <button id="loadSettings">Cargar Configuración Guardada</button>
+            </div>
+        </section>
     </div>
 
-    
-    <video id="video" autoplay playsinline></video>
-    <button id="takePhoto" style="display:none;">Tomar fotografía</button>
-    <img id="photo" />
-    <pre id="output"></pre>
-<pre id="cameraOptions" style="background:#222;color:#fff;padding:10px;"></pre>
     <script>
-        window.addEventListener('load', function () {
-
-            // ✅ Lector específico para PDF417 (OFICIAL)
-            const codeReader = new ZXing.BrowserPDF417Reader();
-            console.log('ZXing PDF417 reader inicializado');
-
-            const fileInput = document.getElementById('fileInput');
-            const preview = document.getElementById('preview');
-            const output = document.getElementById('output');
-            const startCamera = document.getElementById('startCamera');
-            const video = document.getElementById('video');
-            const takePhoto = document.getElementById('takePhoto');
-            const photo = document.getElementById('photo');
-            const scanRealtime = document.getElementById('scanRealtime');
-            const brightness = document.getElementById('brightness');
-            const contrast = document.getElementById('contrast');
-            const quality = document.getElementById('quality');
-            const grayscale = document.getElementById('grayscale');
-            const sharpen = document.getElementById('sharpen');
-            const exposure = document.getElementById('exposure');
-            const whiteBalance = document.getElementById('whiteBalance');
-            const zoom = document.getElementById('zoom');
-            const toggleFocusBtn = document.getElementById('toggleFocusBtn');
-            const toggleAiBtn = document.getElementById('toggleAiBtn');
-            const toggleTorchBtn = document.getElementById('toggleTorchBtn');
-            let autofocusEnabled = false;
-            let aiCorrectionEnabled = false;
-            let torchEnabled = false;
-            let currentTrack = null;
-
-            fileInput.addEventListener('change', function (e) {
-                const file = e.target.files[0];
-                if (!file) return;
-
-                // Mostrar imagen
-                const url = URL.createObjectURL(file);
-                preview.src = url;
-
-                preview.onload = function () {
-                    output.textContent = 'Procesando imagen...';
-
-                    // 🔍 Detectar / decodificar PDF417
-                    codeReader.decodeFromImage(preview)
-                        .then(result => {
-                            output.textContent =
-                                '✅ PDF417 detectado:\n\n' + result.text;
-                        })
-                        .catch(err => {
-                            output.textContent =
-                                '❌ No se detectó ningún PDF417 en la imagen.';
-                            console.error(err);
-                        });
+        // ==================== CONFIGURACIÓN INICIAL ====================
+        class PDF417Processor {
+            constructor() {
+                this.config = {
+                    grayscale: { enabled: true, method: 'luminance' },
+                    illuminationCorrection: { enabled: true, strength: 0.7 },
+                    clahe: { enabled: true, contrast: 1.0 },
+                    denoising: { enabled: true, strength: 0.5 },
+                    adaptiveThreshold: { 
+                        enabled: true, 
+                        method: 'sauvola', 
+                        windowSize: 15, 
+                        k: 0.2 
+                    },
+                    shadowRemoval: { enabled: true, intensity: 0.8 },
+                    reflectionRemoval: { enabled: true, sensitivity: 0.6 },
+                    edgeEnhancement: { enabled: true, strength: 0.4 }
                 };
-            });
-
-            let stream = null;
-            let scanInterval = null;
-            let scanningActive = false;
-
-            // Actualiza el filtro del video en vivo
-            function updateVideoFilter() {
-                let filters = [];
-                filters.push(`brightness(${brightness.value})`);
-                filters.push(`contrast(${contrast.value})`);
-                if (grayscale.checked) filters.push('grayscale(1)');
-                video.style.filter = filters.join(' ');
-            }
-            [brightness, contrast, grayscale].forEach(ctrl => {
-                ctrl.addEventListener('input', updateVideoFilter);
-            });
-
-            async function applyCameraControls(track) {
-                if (!track || typeof track.getCapabilities !== 'function') return;
-                const caps = track.getCapabilities();
-                const constraints = {};
-
-                // Exposición
-                if (caps.exposureCompensation) {
-                    constraints.advanced = constraints.advanced || [];
-                    constraints.advanced.push({ exposureCompensation: parseFloat(exposure.value) });
-                }
-                // Balance de blancos
-                if (caps.whiteBalanceMode && caps.whiteBalanceMode.includes('manual') && caps.colorTemperature) {
-                    constraints.advanced = constraints.advanced || [];
-                    constraints.advanced.push({
-                        whiteBalanceMode: 'manual',
-                        colorTemperature: parseInt(whiteBalance.value)
-                    });
-                }
-                // Zoom
-                if (caps.zoom) {
-                    constraints.advanced = constraints.advanced || [];
-                    constraints.advanced.push({ zoom: parseFloat(zoom.value) });
-                }
-                // Torch/Flash
-                if (caps.torch) {
-                    constraints.advanced = constraints.advanced || [];
-                    constraints.advanced.push({ torch: torchEnabled });
-                }
-                if (Object.keys(constraints).length > 0) {
-                    try { await track.applyConstraints(constraints); } catch (e) {}
-                }
+                this.loadSettings();
             }
 
-            // Mostrar las opciones actuales de la cámara en JSON
-            async function updateCameraOptionsDisplay() {
-                if (currentTrack && typeof currentTrack.getSettings === 'function' && typeof currentTrack.getConstraints === 'function' && typeof currentTrack.getCapabilities === 'function') {
-                    const info = {
-                        settings: currentTrack.getSettings(),
-                        constraints: currentTrack.getConstraints(),
-                        capabilities: currentTrack.getCapabilities()
-                    };
-                    cameraOptions.textContent = JSON.stringify(info, null, 2);
-                } else {
-                    cameraOptions.textContent = 'No disponible';
-                }
-            }
-
-            // Llama a updateCameraOptionsDisplay después de cada cambio relevante
-            function updateAndShowCameraOptions() {
-                updateCameraOptionsDisplay();
-            }
-
-            async function startCameraWithOptions() {
-                if (stream) {
-                    stream.getTracks().forEach(track => track.stop());
-                }
-                try {
-                    let constraints = {
-                        video: {
-                            facingMode: 'environment'
-                        }
-                    };
-                    if (autofocusEnabled) {
-                        constraints.video.focusMode = 'continuous';
-                        constraints.video.advanced = [{ focusMode: "continuous" }];
-                    }
-                    if (aiCorrectionEnabled) {
-                        // 'auto' o 'on' según navegador, para IA (puede ser digital image stabilization, etc.)
-                        constraints.video.advanced = constraints.video.advanced || [];
-                        constraints.video.advanced.push({ imageStabilization: true });
-                        // Algunos navegadores soportan 'torch', 'whiteBalanceMode', etc.
-                    }
-                    stream = await navigator.mediaDevices.getUserMedia(constraints);
-                    video.srcObject = stream;
-                    video.style.display = 'block';
-                    takePhoto.style.display = 'inline-block';
-                    photo.style.display = 'none';
-                    updateVideoFilter();
-                    currentTrack = stream.getVideoTracks()[0];
-                    // Intenta aplicar autofocus si está habilitado y soportado
-                    if (autofocusEnabled && currentTrack && typeof currentTrack.getCapabilities === 'function') {
-                        const caps = currentTrack.getCapabilities();
-                        if (caps.focusMode && caps.focusMode.includes('continuous')) {
-                            currentTrack.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
+            loadSettings() {
+                const saved = localStorage.getItem('pdf417_processor_config');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    // Solo sobrescribir las configuraciones que existen
+                    for (let key in parsed) {
+                        if (this.config[key]) {
+                            Object.assign(this.config[key], parsed[key]);
                         }
                     }
-                    // Intenta aplicar IA si está habilitado y soportado
-                    if (aiCorrectionEnabled && currentTrack && typeof currentTrack.getCapabilities === 'function') {
-                        const caps = currentTrack.getCapabilities();
-                        if (caps.imageStabilization) {
-                            currentTrack.applyConstraints({ advanced: [{ imageStabilization: true }] });
-                        }
-                    }
-                    await applyCameraControls(currentTrack);
-                    updateAndShowCameraOptions();
-                } catch (err) {
-                    output.textContent = 'No se pudo acceder a la cámara.';
                 }
             }
 
-            startCamera.addEventListener('click', startCameraWithOptions);
+            saveSettings() {
+                localStorage.setItem('pdf417_processor_config', JSON.stringify(this.config));
+            }
 
-            // Aplica nitidez al contexto del canvas si es necesario
-            function applySharpen(ctx, canvas) {
-                const amount = parseFloat(sharpen.value);
-                if (amount > 0) {
-                    // Kernel de nitidez simple
-                    const weights = [
-                        0,        -amount,     0,
-                        -amount,  1 + 4*amount, -amount,
-                        0,        -amount,     0
-                    ];
-                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                    const pixels = imageData.data;
-                    const w = canvas.width;
-                    const h = canvas.height;
-                    const copy = new Uint8ClampedArray(pixels);
-                    for (let y = 1; y < h - 1; y++) {
-                        for (let x = 1; x < w - 1; x++) {
-                            for (let c = 0; c < 3; c++) {
-                                let i = (y * w + x) * 4 + c;
-                                let sum =
-                                    weights[0] * copy[((y - 1) * w + (x - 1)) * 4 + c] +
-                                    weights[1] * copy[((y - 1) * w + x) * 4 + c] +
-                                    weights[2] * copy[((y - 1) * w + (x + 1)) * 4 + c] +
-                                    weights[3] * copy[(y * w + (x - 1)) * 4 + c] +
-                                    weights[4] * copy[(y * w + x) * 4 + c] +
-                                    weights[5] * copy[(y * w + (x + 1)) * 4 + c] +
-                                    weights[6] * copy[((y + 1) * w + (x - 1)) * 4 + c] +
-                                    weights[7] * copy[((y + 1) * w + x) * 4 + c] +
-                                    weights[8] * copy[((y + 1) * w + (x + 1)) * 4 + c];
-                                pixels[i] = Math.min(255, Math.max(0, sum));
+            resetSettings() {
+                this.config = {
+                    grayscale: { enabled: true, method: 'luminance' },
+                    illuminationCorrection: { enabled: true, strength: 0.7 },
+                    clahe: { enabled: true, contrast: 1.0 },
+                    denoising: { enabled: true, strength: 0.5 },
+                    adaptiveThreshold: { 
+                        enabled: true, 
+                        method: 'sauvola', 
+                        windowSize: 15, 
+                        k: 0.2 
+                    },
+                    shadowRemoval: { enabled: true, intensity: 0.8 },
+                    reflectionRemoval: { enabled: true, sensitivity: 0.6 },
+                    edgeEnhancement: { enabled: true, strength: 0.4 }
+                };
+                this.saveSettings();
+            }
+
+            // Método para actualizar la configuración desde los controles
+            updateFromUI() {
+                this.config.grayscale.enabled = document.getElementById('grayscaleEnabled').checked;
+                this.config.grayscale.method = document.getElementById('grayscaleMethod').value;
+
+                this.config.illuminationCorrection.enabled = document.getElementById('illuminationEnabled').checked;
+                this.config.illuminationCorrection.strength = parseFloat(document.getElementById('illuminationStrength').value);
+
+                this.config.clahe.enabled = document.getElementById('claheEnabled').checked;
+                this.config.clahe.contrast = parseFloat(document.getElementById('claheContrast').value);
+
+                this.config.denoising.enabled = document.getElementById('denoisingEnabled').checked;
+                this.config.denoising.strength = parseFloat(document.getElementById('denoisingStrength').value);
+
+                this.config.adaptiveThreshold.enabled = document.getElementById('adaptiveThresholdEnabled').checked;
+                this.config.adaptiveThreshold.method = document.getElementById('thresholdMethod').value;
+                this.config.adaptiveThreshold.windowSize = parseInt(document.getElementById('windowSize').value);
+                this.config.adaptiveThreshold.k = parseFloat(document.getElementById('kValue').value);
+
+                this.config.shadowRemoval.enabled = document.getElementById('shadowRemovalEnabled').checked;
+                this.config.shadowRemoval.intensity = parseFloat(document.getElementById('shadowIntensity').value);
+
+                this.config.reflectionRemoval.enabled = document.getElementById('reflectionRemovalEnabled').checked;
+                this.config.reflectionRemoval.sensitivity = parseFloat(document.getElementById('reflectionSensitivity').value);
+
+                this.config.edgeEnhancement.enabled = document.getElementById('edgeEnhancementEnabled').checked;
+                this.config.edgeEnhancement.strength = parseFloat(document.getElementById('edgeStrength').value);
+
+                this.saveSettings();
+            }
+
+            // Método para actualizar los controles UI desde la configuración
+            updateUIFromConfig() {
+                document.getElementById('grayscaleEnabled').checked = this.config.grayscale.enabled;
+                document.getElementById('grayscaleMethod').value = this.config.grayscale.method;
+
+                document.getElementById('illuminationEnabled').checked = this.config.illuminationCorrection.enabled;
+                document.getElementById('illuminationStrength').value = this.config.illuminationCorrection.strength;
+
+                document.getElementById('claheEnabled').checked = this.config.clahe.enabled;
+                document.getElementById('claheContrast').value = this.config.clahe.contrast;
+
+                document.getElementById('denoisingEnabled').checked = this.config.denoising.enabled;
+                document.getElementById('denoisingStrength').value = this.config.denoising.strength;
+
+                document.getElementById('adaptiveThresholdEnabled').checked = this.config.adaptiveThreshold.enabled;
+                document.getElementById('thresholdMethod').value = this.config.adaptiveThreshold.method;
+                document.getElementById('windowSize').value = this.config.adaptiveThreshold.windowSize;
+                document.getElementById('kValue').value = this.config.adaptiveThreshold.k;
+
+                document.getElementById('shadowRemovalEnabled').checked = this.config.shadowRemoval.enabled;
+                document.getElementById('shadowIntensity').value = this.config.shadowRemoval.intensity;
+
+                document.getElementById('reflectionRemovalEnabled').checked = this.config.reflectionRemoval.enabled;
+                document.getElementById('reflectionSensitivity').value = this.config.reflectionRemoval.sensitivity;
+
+                document.getElementById('edgeEnhancementEnabled').checked = this.config.edgeEnhancement.enabled;
+                document.getElementById('edgeStrength').value = this.config.edgeEnhancement.strength;
+            }
+
+            // ==================== FUNCIONES DE PROCESAMIENTO DE IMAGEN ====================
+
+            // Convertir imagen a escala de grises
+            grayscale(imageData, method = 'luminance') {
+                const data = imageData.data;
+                for (let i = 0; i < data.length; i += 4) {
+                    const r = data[i];
+                    const g = data[i + 1];
+                    const b = data[i + 2];
+                    let gray;
+                    switch (method) {
+                        case 'luminance':
+                            gray = 0.299 * r + 0.587 * g + 0.114 * b;
+                            break;
+                        case 'average':
+                            gray = (r + g + b) / 3;
+                            break;
+                        case 'lightness':
+                            gray = (Math.max(r, g, b) + Math.min(r, g, b)) / 2;
+                            break;
+                        default:
+                            gray = 0.299 * r + 0.587 * g + 0.114 * b;
+                    }
+                    data[i] = data[i + 1] = data[i + 2] = gray;
+                }
+                return imageData;
+            }
+
+            // Corrección de iluminación (simplificada: ajuste de histograma)
+            correctIllumination(imageData, strength) {
+                const data = imageData.data;
+                // Calculamos el histograma
+                const histogram = new Array(256).fill(0);
+                for (let i = 0; i < data.length; i += 4) {
+                    const gray = data[i];
+                    histogram[Math.floor(gray)]++;
+                }
+                // Calculamos la CDF (función de distribución acumulativa)
+                const cdf = new Array(256).fill(0);
+                cdf[0] = histogram[0];
+                for (let i = 1; i < 256; i++) {
+                    cdf[i] = cdf[i - 1] + histogram[i];
+                }
+                // Normalizamos la CDF
+                const cdfMin = cdf.find(val => val > 0);
+                const cdfMax = cdf[255];
+                for (let i = 0; i < data.length; i += 4) {
+                    const gray = data[i];
+                    const cdfValue = cdf[Math.floor(gray)];
+                    const newGray = ((cdfValue - cdfMin) / (cdfMax - cdfMin)) * 255;
+                    // Interpolamos entre el original y el ecualizado según la fuerza
+                    data[i] = data[i + 1] = data[i + 2] = 
+                        (1 - strength) * gray + strength * newGray;
+                }
+                return imageData;
+            }
+
+            // CLAHE simplificado (ajuste de contraste local)
+            applyCLAHE(imageData, contrast) {
+                // Implementación básica: ajuste de contraste global con factor
+                const data = imageData.data;
+                const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
+                for (let i = 0; i < data.length; i += 4) {
+                    const r = data[i];
+                    const g = data[i + 1];
+                    const b = data[i + 2];
+                    data[i] = this.clamp(factor * (r - 128) + 128, 0, 255);
+                    data[i + 1] = this.clamp(factor * (g - 128) + 128, 0, 255);
+                    data[i + 2] = this.clamp(factor * (b - 128) + 128, 0, 255);
+                }
+                return imageData;
+            }
+
+            // Reducción de ruido (filtro de mediana simplificado)
+            denoise(imageData, strength) {
+                const width = imageData.width;
+                const height = imageData.height;
+                const data = imageData.data;
+                const kernelSize = Math.max(3, Math.floor(strength * 5));
+                const halfKernel = Math.floor(kernelSize / 2);
+                const tempData = new Uint8ClampedArray(data);
+
+                for (let y = halfKernel; y < height - halfKernel; y++) {
+                    for (let x = halfKernel; x < width - halfKernel; x++) {
+                        const idx = (y * width + x) * 4;
+                        let rValues = [], gValues = [], bValues = [];
+                        for (let ky = -halfKernel; ky <= halfKernel; ky++) {
+                            for (let kx = -halfKernel; kx <= halfKernel; kx++) {
+                                const kidx = ((y + ky) * width + (x + kx)) * 4;
+                                rValues.push(tempData[kidx]);
+                                gValues.push(tempData[kidx + 1]);
+                                bValues.push(tempData[kidx + 2]);
                             }
                         }
+                        // Ordenar y tomar la mediana
+                        rValues.sort((a, b) => a - b);
+                        gValues.sort((a, b) => a - b);
+                        bValues.sort((a, b) => a - b);
+                        const medianIndex = Math.floor(rValues.length / 2);
+                        // Interpolar entre original y mediana según fuerza
+                        const blend = strength;
+                        data[idx] = (1 - blend) * data[idx] + blend * rValues[medianIndex];
+                        data[idx + 1] = (1 - blend) * data[idx + 1] + blend * gValues[medianIndex];
+                        data[idx + 2] = (1 - blend) * data[idx + 2] + blend * bValues[medianIndex];
                     }
-                    ctx.putImageData(imageData, 0, 0);
                 }
+                return imageData;
             }
 
-            takePhoto.addEventListener('click', function () {
+            // Umbral adaptativo de Sauvola (simplificado)
+            sauvolaThreshold(imageData, windowSize, k) {
+                const width = imageData.width;
+                const height = imageData.height;
+                const data = imageData.data;
+                const tempData = new Uint8ClampedArray(data);
+                const halfWindow = Math.floor(windowSize / 2);
+                const r = 128; // Rango dinámico de gris
+
+                for (let y = halfWindow; y < height - halfWindow; y++) {
+                    for (let x = halfWindow; x < width - halfWindow; x++) {
+                        let sum = 0;
+                        let sumSq = 0;
+                        let count = 0;
+                        // Calcular media y desviación estándar en la ventana
+                        for (let wy = -halfWindow; wy <= halfWindow; wy++) {
+                            for (let wx = -halfWindow; wx <= halfWindow; wx++) {
+                                const idx = ((y + wy) * width + (x + wx)) * 4;
+                                const gray = tempData[idx];
+                                sum += gray;
+                                sumSq += gray * gray;
+                                count++;
+                            }
+                        }
+                        const mean = sum / count;
+                        const variance = (sumSq / count) - (mean * mean);
+                        const stdDev = Math.sqrt(variance);
+                        // Calcular umbral de Sauvola
+                        const threshold = mean * (1 + k * ((stdDev / r) - 1));
+                        const idx = (y * width + x) * 4;
+                        const gray = tempData[idx];
+                        // Binarizar
+                        const binary = gray > threshold ? 255 : 0;
+                        data[idx] = data[idx + 1] = data[idx + 2] = binary;
+                    }
+                }
+                return imageData;
+            }
+
+            // Remoción de sombras (simplificada: ajuste de gamma local)
+            removeShadows(imageData, intensity) {
+                const data = imageData.data;
+                // Primero, estimamos la iluminación local con un filtro de media grande
+                const width = imageData.width;
+                const height = imageData.height;
+                const illumination = new Float32Array(width * height);
+                const kernelSize = 31;
+                const halfKernel = Math.floor(kernelSize / 2);
+
+                // Calcular la iluminación estimada (versión simplificada)
+                for (let y = 0; y < height; y++) {
+                    for (let x = 0; x < width; x++) {
+                        let sum = 0;
+                        let count = 0;
+                        for (let ky = -halfKernel; ky <= halfKernel; ky++) {
+                            for (let kx = -halfKernel; kx <= halfKernel; kx++) {
+                                const ny = y + ky;
+                                const nx = x + kx;
+                                if (ny >= 0 && ny < height && nx >= 0 && nx < width) {
+                                    const idx = (ny * width + nx) * 4;
+                                    sum += data[idx];
+                                    count++;
+                                }
+                            }
+                        }
+                        illumination[y * width + x] = sum / count;
+                    }
+                }
+
+                // Compensar las sombas dividiendo por la iluminación estimada
+                for (let i = 0; i < data.length; i += 4) {
+                    const x = (i / 4) % width;
+                    const y = Math.floor((i / 4) / width);
+                    const illum = illumination[y * width + x];
+                    const factor = 128 / (illum + 1); // Evitar división por cero
+                    // Aplicar corrección solo a los píxeles oscuros (supuestas sombras)
+                    const gray = data[i];
+                    if (gray < 128) {
+                        const corrected = gray * factor * intensity + gray * (1 - intensity);
+                        data[i] = data[i + 1] = data[i + 2] = this.clamp(corrected, 0, 255);
+                    }
+                }
+                return imageData;
+            }
+
+            // Remoción de reflejos (detección de píxeles saturados)
+            removeReflections(imageData, sensitivity) {
+                const data = imageData.data;
+                const threshold = 250 - (sensitivity * 50); // Entre 200 y 250
+                for (let i = 0; i < data.length; i += 4) {
+                    const r = data[i];
+                    const g = data[i + 1];
+                    const b = data[i + 2];
+                    // Si el píxel es muy brillante, reemplazarlo con el promedio de los vecinos
+                    if (r > threshold && g > threshold && b > threshold) {
+                        // Vecindad 3x3
+                        const width = imageData.width;
+                        const height = imageData.height;
+                        const x = (i / 4) % width;
+                        const y = Math.floor((i / 4) / width);
+                        if (x > 0 && x < width - 1 && y > 0 && y < height - 1) {
+                            let sumR = 0, sumG = 0, sumB = 0, count = 0;
+                            for (let dy = -1; dy <= 1; dy++) {
+                                for (let dx = -1; dx <= 1; dx++) {
+                                    if (dx === 0 && dy === 0) continue;
+                                    const nIdx = ((y + dy) * width + (x + dx)) * 4;
+                                    sumR += data[nIdx];
+                                    sumG += data[nIdx + 1];
+                                    sumB += data[nIdx + 2];
+                                    count++;
+                                }
+                            }
+                            data[i] = sumR / count;
+                            data[i + 1] = sumG / count;
+                            data[i + 2] = sumB / count;
+                        }
+                    }
+                }
+                return imageData;
+            }
+
+            // Mejora de bordes (filtro de realce)
+            enhanceEdges(imageData, strength) {
+                const width = imageData.width;
+                const height = imageData.height;
+                const data = imageData.data;
+                const tempData = new Uint8ClampedArray(data);
+                // Kernel de realce de bordes (Laplaciano)
+                const kernel = [
+                    [0, -1, 0],
+                    [-1, 4, -1],
+                    [0, -1, 0]
+                ];
+                const kernelSum = 1;
+
+                for (let y = 1; y < height - 1; y++) {
+                    for (let x = 1; x < width - 1; x++) {
+                        let sumR = 0, sumG = 0, sumB = 0;
+                        for (let ky = -1; ky <= 1; ky++) {
+                            for (let kx = -1; kx <= 1; kx++) {
+                                const idx = ((y + ky) * width + (x + kx)) * 4;
+                                const weight = kernel[ky + 1][kx + 1];
+                                sumR += tempData[idx] * weight;
+                                sumG += tempData[idx + 1] * weight;
+                                sumB += tempData[idx + 2] * weight;
+                            }
+                        }
+                        const idx = (y * width + x) * 4;
+                        // Agregar el realce a la imagen original
+                        data[idx] = this.clamp(tempData[idx] + strength * sumR / kernelSum, 0, 255);
+                        data[idx + 1] = this.clamp(tempData[idx + 1] + strength * sumG / kernelSum, 0, 255);
+                        data[idx + 2] = this.clamp(tempData[idx + 2] + strength * sumB / kernelSum, 0, 255);
+                    }
+                }
+                return imageData;
+            }
+
+            clamp(value, min, max) {
+                return Math.max(min, Math.min(max, value));
+            }
+
+            // Procesamiento completo
+            processImage(imageData) {
+                let processed = imageData;
+
+                // Aplicar filtros en orden
+                if (this.config.grayscale.enabled) {
+                    processed = this.grayscale(processed, this.config.grayscale.method);
+                }
+
+                if (this.config.illuminationCorrection.enabled) {
+                    processed = this.correctIllumination(processed, this.config.illuminationCorrection.strength);
+                }
+
+                if (this.config.clahe.enabled) {
+                    processed = this.applyCLAHE(processed, this.config.clahe.contrast);
+                }
+
+                if (this.config.denoising.enabled) {
+                    processed = this.denoise(processed, this.config.denoising.strength);
+                }
+
+                if (this.config.shadowRemoval.enabled) {
+                    processed = this.removeShadows(processed, this.config.shadowRemoval.intensity);
+                }
+
+                if (this.config.reflectionRemoval.enabled) {
+                    processed = this.removeReflections(processed, this.config.reflectionRemoval.sensitivity);
+                }
+
+                if (this.config.edgeEnhancement.enabled) {
+                    processed = this.enhanceEdges(processed, this.config.edgeEnhancement.strength);
+                }
+
+                if (this.config.adaptiveThreshold.enabled) {
+                    processed = this.sauvolaThreshold(
+                        processed,
+                        this.config.adaptiveThreshold.windowSize,
+                        this.config.adaptiveThreshold.k
+                    );
+                }
+
+                return processed;
+            }
+        }
+
+        // ==================== VARIABLES GLOBALES ====================
+        const processor = new PDF417Processor();
+        let stream = null;
+        let autoScanInterval = null;
+        let isAutoScanning = false;
+        const codeReader = new ZXing.BrowserPDF417Reader();
+
+        // Elementos del DOM
+        const video = document.getElementById('video');
+        const overlay = document.getElementById('overlay');
+        const overlayCtx = overlay.getContext('2d');
+        const startButton = document.getElementById('startButton');
+        const stopButton = document.getElementById('stopButton');
+        const captureButton = document.getElementById('captureButton');
+        const toggleScanButton = document.getElementById('toggleScan');
+        const uploadButton = document.getElementById('uploadButton');
+        const fileInput = document.getElementById('fileInput');
+        const resultsDiv = document.getElementById('results');
+        const processingIndicator = document.getElementById('processingIndicator');
+
+        // Controles de cámara (simulados, no todos los navegadores soportan)
+        const brightnessControl = document.getElementById('brightness');
+        const contrastControl = document.getElementById('contrast');
+        const saturationControl = document.getElementById('saturation');
+        const sharpnessControl = document.getElementById('sharpness');
+        const zoomControl = document.getElementById('zoom');
+
+        // ==================== FUNCIONES DE CÁMARA ====================
+        async function startCamera() {
+            try {
+                const constraints = {
+                    video: {
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 },
+                        facingMode: 'environment',
+                        advanced: []
+                    },
+                    audio: false
+                };
+
+                // Intentar aplicar controles de cámara si están disponibles
+                if (window.MediaSettingsRange) {
+                    constraints.video.advanced = [
+                        { brightness: { ideal: parseFloat(brightnessControl.value) } },
+                        { contrast: { ideal: parseFloat(contrastControl.value) } },
+                        { saturation: { ideal: parseFloat(saturationControl.value) } },
+                        { sharpness: { ideal: parseFloat(sharpnessControl.value) } }
+                    ];
+                }
+
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = stream;
+                
+                // Ajustar el canvas overlay al tamaño del video
+                video.onloadedmetadata = () => {
+                    overlay.width = video.videoWidth;
+                    overlay.height = video.videoHeight;
+                };
+
+                // Actualizar controles de cámara en tiempo real
+                if (stream.getVideoTracks()[0].getCapabilities) {
+                    const capabilities = stream.getVideoTracks()[0].getCapabilities();
+                    console.log('Capacidades de cámara:', capabilities);
+                }
+
+                startButton.disabled = true;
+                stopButton.disabled = false;
+                captureButton.disabled = false;
+            } catch (err) {
+                console.error('Error al acceder a la cámara:', err);
+                alert('No se pudo acceder a la cámara: ' + err.message);
+            }
+        }
+
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+                video.srcObject = null;
+                startButton.disabled = false;
+                stopButton.disabled = true;
+                captureButton.disabled = true;
+                stopAutoScan();
+            }
+        }
+
+        // ==================== FUNCIONES DE ESCANEO ====================
+        function showProcessing(show) {
+            if (show) {
+                processingIndicator.classList.remove('hidden');
+            } else {
+                processingIndicator.classList.add('hidden');
+            }
+        }
+
+        async function captureAndScan() {
+            if (!stream) {
+                alert('Inicia la cámara primero');
+                return;
+            }
+
+            showProcessing(true);
+            
+            // Crear un canvas temporal con el frame actual
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            
+            // Actualizar configuración desde UI antes de procesar
+            processor.updateFromUI();
+            
+            // Procesar la imagen
+            imageData = processor.processImage(imageData);
+            
+            // Mostrar la imagen procesada en el overlay (para debug)
+            overlayCtx.putImageData(imageData, 0, 0);
+            
+            // Convertir a ImageBitmap para ZXing
+            const processedCanvas = document.createElement('canvas');
+            processedCanvas.width = canvas.width;
+            processedCanvas.height = canvas.height;
+            const processedCtx = processedCanvas.getContext('2d');
+            processedCtx.putImageData(imageData, 0, 0);
+            
+            try {
+                const result = await codeReader.decodeFromCanvas(processedCanvas);
+                showResults(result.text);
+            } catch (err) {
+                console.log('No se pudo decodificar:', err);
+                showResults('No se detectó código PDF417. Intenta ajustar los filtros.');
+            }
+            
+            showProcessing(false);
+        }
+
+        function startAutoScan() {
+            if (isAutoScanning) return;
+            isAutoScanning = true;
+            toggleScanButton.textContent = 'Auto Escanear: Activado';
+            autoScanInterval = setInterval(captureAndScan, 2000); // Escanear cada 2 segundos
+        }
+
+        function stopAutoScan() {
+            isAutoScanning = false;
+            if (autoScanInterval) {
+                clearInterval(autoScanInterval);
+                autoScanInterval = null;
+            }
+            toggleScanButton.textContent = 'Auto Escanear: Desactivado';
+        }
+
+        function toggleAutoScan() {
+            if (isAutoScanning) {
+                stopAutoScan();
+            } else {
+                startAutoScan();
+            }
+        }
+
+        function showResults(text) {
+            resultsDiv.textContent = text;
+            resultsDiv.style.background = '#d4edda';
+            setTimeout(() => {
+                resultsDiv.style.background = '#e9ecef';
+            }, 1000);
+        }
+
+        // ==================== MANEJO DE ARCHIVOS ====================
+        uploadButton.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', async (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const img = new Image();
+            img.onload = async () => {
                 const canvas = document.createElement('canvas');
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
+                canvas.width = img.width;
+                canvas.height = img.height;
                 const ctx = canvas.getContext('2d');
-                let filters = [];
-                filters.push(`brightness(${brightness.value})`);
-                filters.push(`contrast(${contrast.value})`);
-                if (grayscale.checked) filters.push('grayscale(1)');
-                ctx.filter = filters.join(' ');
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                applySharpen(ctx, canvas);
-                const imgQuality = parseFloat(quality.value);
-                const dataUrl = canvas.toDataURL('image/jpeg', imgQuality);
-                photo.src = dataUrl;
-                photo.style.display = 'block';
-                decodificarPDF417FromImage(photo);
-            });
-
-            scanRealtime.addEventListener('click', async function () {
-                if (stream) {
-                    stream.getTracks().forEach(track => track.stop());
-                }
+                ctx.drawImage(img, 0, 0);
+                
+                let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                
+                // Actualizar configuración desde UI antes de procesar
+                processor.updateFromUI();
+                
+                // Procesar la imagen
+                imageData = processor.processImage(imageData);
+                
+                // Mostrar la imagen procesada en el overlay
+                overlay.width = canvas.width;
+                overlay.height = canvas.height;
+                overlayCtx.putImageData(imageData, 0, 0);
+                
+                // Convertir a ImageBitmap para ZXing
+                const processedCanvas = document.createElement('canvas');
+                processedCanvas.width = canvas.width;
+                processedCanvas.height = canvas.height;
+                const processedCtx = processedCanvas.getContext('2d');
+                processedCtx.putImageData(imageData, 0, 0);
+                
+                showProcessing(true);
                 try {
-                    let constraints = {
-                        video: {
-                            facingMode: 'environment'
-                        }
-                    };
-                    if (autofocusEnabled) {
-                        constraints.video.focusMode = 'continuous';
-                        constraints.video.advanced = [{ focusMode: "continuous" }];
-                    }
-                    if (aiCorrectionEnabled) {
-                        constraints.video.advanced = constraints.video.advanced || [];
-                        constraints.video.advanced.push({ imageStabilization: true });
-                    }
-                    stream = await navigator.mediaDevices.getUserMedia(constraints);
-                    video.srcObject = stream;
-                    video.style.display = 'block';
-                    takePhoto.style.display = 'none';
-                    photo.style.display = 'none';
-                    output.textContent = 'Escaneando en tiempo real...';
-                    scanningActive = true;
-                    updateVideoFilter();
-                    currentTrack = stream.getVideoTracks()[0];
-                    if (autofocusEnabled && currentTrack && typeof currentTrack.getCapabilities === 'function') {
-                        const caps = currentTrack.getCapabilities();
-                        if (caps.focusMode && caps.focusMode.includes('continuous')) {
-                            currentTrack.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
-                        }
-                    }
-                    if (aiCorrectionEnabled && currentTrack && typeof currentTrack.getCapabilities === 'function') {
-                        const caps = currentTrack.getCapabilities();
-                        if (caps.imageStabilization) {
-                            currentTrack.applyConstraints({ advanced: [{ imageStabilization: true }] });
-                        }
-                    }
-
-                    await applyCameraControls(currentTrack);
-                    updateAndShowCameraOptions();
-
-                    // Escanear cada 2 segundos
-                    scanInterval = setInterval(() => {
-                        if (!scanningActive) return;
-                        const canvas = document.createElement('canvas');
-                        canvas.width = video.videoWidth;
-                        canvas.height = video.videoHeight;
-                        const ctx = canvas.getContext('2d');
-                        let filters = [];
-                        filters.push(`brightness(${brightness.value})`);
-                        filters.push(`contrast(${contrast.value})`);
-                        if (grayscale.checked) filters.push('grayscale(1)');
-                        ctx.filter = filters.join(' ');
-                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                        applySharpen(ctx, canvas);
-                        const imgQuality = parseFloat(quality.value);
-                        const tempImg = new Image();
-                        tempImg.onload = function () {
-                            codeReader.decodeFromImage(tempImg)
-                                .then(result => {
-                                    output.textContent = '✅ PDF417 detectado:\n\n' + result.text;
-                                    // Detener escaneo y cámara
-                                    scanningActive = false;
-                                    clearInterval(scanInterval);
-                                    if (stream) stream.getTracks().forEach(track => track.stop());
-                                    video.style.display = 'none';
-                                })
-                                .catch(() => {
-                                    // No se detectó, sigue escaneando
-                                });
-                        };
-                        tempImg.src = canvas.toDataURL('image/jpeg', imgQuality);
-                    }, 2000);
+                    const result = await codeReader.decodeFromCanvas(processedCanvas);
+                    showResults(result.text);
                 } catch (err) {
-                    output.textContent = 'No se pudo acceder a la cámara.';
+                    console.log('No se pudo decodificar:', err);
+                    showResults('No se detectó código PDF417. Intenta ajustar los filtros.');
                 }
-            });
-
-            // Mostrar las opciones actuales de la cámara al cargar
-            updateCameraOptionsDisplay();
-
-            [brightness, contrast, grayscale, exposure, whiteBalance, zoom, sharpen].forEach(ctrl => {
-                ctrl.addEventListener('input', function () {
-                    updateVideoFilter();
-                    if (currentTrack) applyCameraControls(currentTrack).then(updateAndShowCameraOptions);
-                    else updateAndShowCameraOptions();
-                });
-            });
-
-            toggleFocusBtn.addEventListener('click', function () {
-                autofocusEnabled = !autofocusEnabled;
-                toggleFocusBtn.textContent = 'Autofocus: ' + (autofocusEnabled ? 'ON' : 'OFF');
-                if (video.style.display === 'block') startCameraWithOptions().then(updateAndShowCameraOptions);
-            });
-
-            toggleAiBtn.addEventListener('click', function () {
-                aiCorrectionEnabled = !aiCorrectionEnabled;
-                toggleAiBtn.textContent = 'Corrección IA: ' + (aiCorrectionEnabled ? 'ON' : 'OFF');
-                if (video.style.display === 'block') startCameraWithOptions().then(updateAndShowCameraOptions);
-            });
-
-            toggleTorchBtn.addEventListener('click', function () {
-                torchEnabled = !torchEnabled;
-                toggleTorchBtn.textContent = 'Flash: ' + (torchEnabled ? 'ON' : 'OFF');
-                if (currentTrack) applyCameraControls(currentTrack).then(updateAndShowCameraOptions);
-                else updateAndShowCameraOptions();
-            });
-
-            // Función para decodificar PDF417 desde una imagen
-            window.decodificarPDF417FromImage = function (imgElement) {
-                output.textContent = 'Procesando imagen...';
-                codeReader.decodeFromImage(imgElement)
-                    .then(result => {
-                        output.textContent = '✅ PDF417 detectado:\n\n' + result.text;
-                    })
-                    .catch(err => {
-                        output.textContent = '❌ No se detectó ningún PDF417 en la imagen.';
-                    });
+                showProcessing(false);
             };
+            img.src = URL.createObjectURL(file);
+        });
+
+        // ==================== CONTROLES DE CONFIGURACIÓN ====================
+        document.getElementById('resetSettings').addEventListener('click', () => {
+            processor.resetSettings();
+            processor.updateUIFromConfig();
+            alert('Configuración restaurada a valores por defecto');
+        });
+
+        document.getElementById('saveSettings').addEventListener('click', () => {
+            processor.updateFromUI();
+            processor.saveSettings();
+            alert('Configuración guardada');
+        });
+
+        document.getElementById('loadSettings').addEventListener('click', () => {
+            processor.loadSettings();
+            processor.updateUIFromConfig();
+            alert('Configuración cargada');
+        });
+
+        // ==================== EVENT LISTENERS ====================
+        startButton.addEventListener('click', startCamera);
+        stopButton.addEventListener('click', stopCamera);
+        captureButton.addEventListener('click', captureAndScan);
+        toggleScanButton.addEventListener('click', toggleAutoScan);
+
+        // Inicializar la UI con la configuración actual
+        processor.updateUIFromConfig();
+
+        // Cargar configuración al inicio
+        window.addEventListener('load', () => {
+            processor.loadSettings();
+            processor.updateUIFromConfig();
         });
     </script>
-
 </body>
-
 </html>
