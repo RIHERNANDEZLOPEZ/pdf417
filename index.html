@@ -2,79 +2,98 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Scan Licencia USA - BlinkID</title>
+  <title>BlinkID – Licencia USA (frente)</title>
   <style>
-    body { font-family: Arial; padding: 20px; }
-    video { width: 100%; max-width: 400px; border: 1px solid #ccc; }
-    pre { background: #f5f5f5; padding: 10px; }
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    video {
+      width: 100%;
+      max-width: 360px;
+      border: 1px solid #ccc;
+      margin-bottom: 10px;
+    }
+    pre {
+      background: #f4f4f4;
+      padding: 10px;
+      white-space: pre-wrap;
+    }
   </style>
 </head>
 <body>
 
-<h2>Escaneo de licencia USA (frente)</h2>
+<h2>Escaneo de licencia de conducir USA</h2>
 
-<video id="camera" autoplay></video>
-<br><br>
+<video id="video" autoplay playsinline></video>
+<br>
 <button id="start">Iniciar escaneo</button>
 
 <h3>Resultado</h3>
-<pre id="result">Esperando...</pre>
+<pre id="output">Esperando…</pre>
 
-<!-- BlinkID SDK (UMD build) -->
-<script src="https://cdn.jsdelivr.net/npm/@microblink/blinkid-in-browser-sdk@6.1.0/dist/blinkid-sdk.min.js"></script>
+<!-- SDK principal de BlinkID -->
+<script src="blinkid-sdk.min.js"></script>
 
 <script>
 (async () => {
-  const resultEl = document.getElementById('result');
-  const videoEl = document.getElementById('camera');
 
-  // ⚠️ Reemplaza con tu license key
-  const LICENSE_KEY = "TU_LICENSE_KEY_AQUI";
+  const video = document.getElementById("video");
+  const output = document.getElementById("output");
+  const startBtn = document.getElementById("start");
 
-  document.getElementById('start').onclick = async () => {
+  // 🔴 REEMPLAZA con tu license key real
+  const LICENSE_KEY = "sRwCABpyaWhlcm5hbmRlemxvcGV6LmdpdGh1Yi5pbwZsZXlKRGNtVmhkR1ZrVDI0aU9qRTNOalkzTmpNeU9EVTFNVE1zSWtOeVpXRjBaV1JHYjNJaU9pSmtOalUwWXpNM1pDMDJNbU5sTFRRMk1EUXRPR1ptWmkxa1pUWTNNMlkwWlRnME1HUWlmUT09403BAND5GrmfSFcuRHJBArM5adoBLm8IIIqIKZuRgoZ6YvRt/Q8E5xoVPEWceAURsWfN7uff7ZvZ7+WT7RgP3+aOCzl2j+ZZGydP9KaFu64Z1DNaP9n4E7kG3LQVJQ==";
+
+  startBtn.onclick = async () => {
     try {
-      resultEl.textContent = "Inicializando BlinkID...";
+      output.textContent = "Inicializando BlinkID…";
 
       const sdk = await BlinkIDSDK.initialize({
         licenseKey: LICENSE_KEY,
-        engineLocation: "/blinkid", // carpeta donde están los WASM
+
+        // 👇 carpeta donde están los WASM
+        engineLocation: "/dist",
+
+        // 👇 porque estás usando lightweight/basic
+        wasmType: "lightweight"
       });
 
-      // Recognizer para documentos de identidad
       const recognizer = await sdk.createBlinkIdRecognizer();
 
-      // Acceder a cámara
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "environment" }
       });
-      videoEl.srcObject = stream;
 
-      resultEl.textContent = "Escaneando... apunta al frente de la licencia";
+      video.srcObject = stream;
+      output.textContent = "Escaneando… apunta al frente de la licencia";
 
-      // Escaneo continuo
-      sdk.recognizeFromVideo(videoEl, recognizer, (result) => {
+      sdk.recognizeFromVideo(video, recognizer, (result) => {
+
         if (result.state === BlinkIDSDK.RecognizerResultState.Valid) {
 
-          const data = result.result;
-
+          // detener cámara
           stream.getTracks().forEach(t => t.stop());
 
-          resultEl.textContent = JSON.stringify({
-            licenseNumber: data.documentNumber,
-            firstName: data.firstName,
-            lastName: data.lastName,
-            dateOfBirth: data.dateOfBirth,
-            expirationDate: data.dateOfExpiry,
-            issuingState: data.issuingAuthority
+          const r = result.result;
+
+          output.textContent = JSON.stringify({
+            licenseNumber: r.documentNumber,
+            firstName: r.firstName,
+            lastName: r.lastName,
+            dateOfBirth: r.dateOfBirth,
+            expirationDate: r.dateOfExpiry,
+            issuingState: r.issuingAuthority
           }, null, 2);
         }
       });
 
     } catch (err) {
       console.error(err);
-      resultEl.textContent = "Error: " + err.message;
+      output.textContent = "Error: " + err.message;
     }
   };
+
 })();
 </script>
 
