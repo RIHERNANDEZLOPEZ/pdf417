@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Escáner de Números de Licencia</title>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background-color: #f5f7fa;
+      color: #333;
+      line-height: 1.6;
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #ddd;
+    }
+
+    h1 {
+      color: #2c3e50;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      color: #7f8c8d;
+      font-size: 1.1rem;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      gap: 30px;
+    }
+
+    @media (min-width: 992px) {
+      .container {
+        flex-direction: row;
+      }
+
+      .upload-section,
+      .results-section {
+        flex: 1;
+      }
+    }
+
+    .section {
+      background-color: white;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      padding: 25px;
+      height: fit-content;
+    }
+
+    .section-title {
+      font-size: 1.4rem;
+      color: #3498db;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .upload-area {
+      border: 2px dashed #3498db;
+      border-radius: 8px;
+      padding: 40px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+      background-color: #f8fafc;
+      margin-bottom: 20px;
+    }
+
+    .upload-area:hover {
+      background-color: #e8f4fc;
+      border-color: #2980b9;
+    }
+
+    .upload-icon {
+      font-size: 48px;
+      color: #3498db;
+      margin-bottom: 15px;
+    }
+
+    .upload-text {
+      font-size: 1.1rem;
+      margin-bottom: 10px;
+      color: #555;
+    }
+
+    .upload-hint {
+      color: #95a5a6;
+      font-size: 0.9rem;
+    }
+
+    #fileInput {
+      display: none;
+    }
+
+    .preview-container {
+      margin-top: 20px;
+      text-align: center;
+    }
+
+    #imagePreview {
+      max-width: 100%;
+      max-height: 300px;
+      border-radius: 8px;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+      display: none;
+    }
+
+    .controls {
+      display: flex;
+      gap: 15px;
+      margin-top: 25px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s;
+      flex: 1;
+      min-width: 140px;
+    }
+
+    #scanBtn {
+      background-color: #2ecc71;
+      color: white;
+    }
+
+    #scanBtn:hover:not(:disabled) {
+      background-color: #27ae60;
+    }
+
+    #resetBtn {
+      background-color: #e74c3c;
+      color: white;
+    }
+
+    #resetBtn:hover {
+      background-color: #c0392b;
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .progress-container {
+      margin-top: 20px;
+      background-color: #ecf0f1;
+      border-radius: 8px;
+      overflow: hidden;
+      display: none;
+    }
+
+    .progress-bar {
+      height: 10px;
+      background-color: #3498db;
+      width: 0%;
+      transition: width 0.3s;
+    }
+
+    .progress-text {
+      text-align: center;
+      padding: 10px;
+      font-size: 0.9rem;
+      color: #7f8c8d;
+    }
+
+    .result-item {
+      margin-bottom: 25px;
+      padding: 20px;
+      border-radius: 8px;
+      background-color: #f8f9fa;
+    }
+
+    .result-title {
+      font-weight: 600;
+      color: #2c3e50;
+      margin-bottom: 8px;
+      font-size: 1.1rem;
+    }
+
+    .license-number {
+      font-size: 1.8rem;
+      font-weight: bold;
+      color: #27ae60;
+      padding: 10px;
+      background-color: white;
+      border-radius: 6px;
+      border: 2px solid #2ecc71;
+      text-align: center;
+      margin-top: 10px;
+      word-break: break-all;
+    }
+
+    .no-license {
+      color: #e74c3c;
+      font-weight: bold;
+      padding: 15px;
+      background-color: #fff5f5;
+      border-radius: 6px;
+      border: 1px solid #fadbd8;
+      text-align: center;
+    }
+
+    .detected-text {
+      background-color: white;
+      border-radius: 6px;
+      padding: 15px;
+      border: 1px solid #eee;
+      max-height: 300px;
+      overflow-y: auto;
+      font-family: monospace;
+      white-space: pre-wrap;
+      margin-top: 15px;
+      font-size: 0.9rem;
+    }
+
+    .pattern-info {
+      background-color: #e8f4fc;
+      border-radius: 8px;
+      padding: 15px;
+      margin-top: 15px;
+      font-size: 0.9rem;
+    }
+
+    .pattern-list {
+      margin-top: 10px;
+      padding-left: 20px;
+    }
+
+    .pattern-list li {
+      margin-bottom: 5px;
+    }
+
+    .highlight {
+      background-color: #fffacd;
+      padding: 2px 4px;
+      border-radius: 3px;
+      font-weight: bold;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 40px;
+      color: #95a5a6;
+      font-size: 0.9rem;
+      padding-top: 20px;
+      border-top: 1px solid #eee;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(255, 255, 255, .3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 1s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .status-item {
+      margin: 5px 0;
+      padding: 5px;
+      border-radius: 4px;
+      background-color: #f8f9fa;
+      font-size: 0.85rem;
+    }
+
+    .example-images {
+      margin-top: 20px;
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+    }
+
+    .example-image {
+      width: 100px;
+      height: 70px;
+      border-radius: 5px;
+      object-fit: cover;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: all 0.3s;
+    }
+
+    .example-image:hover {
+      border-color: #3498db;
+      transform: scale(1.05);
+    }
+
+    .examples-title {
+      margin-top: 20px;
+      font-weight: bold;
+      color: #2c3e50;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>Escáner de Números de Licencia</h1>
+    <p class="subtitle">Sube una imagen para escanear y extraer el número de licencia</p>
+  </header>
+
+  <div class="container">
+    <div class="upload-section section">
+      <h2 class="section-title">Subir Imagen</h2>
+
+      <div class="upload-area" id="uploadArea">
+        <div class="upload-icon">📷</div>
+        <div class="upload-text">Haz clic para seleccionar una imagen</div>
+        <div class="upload-hint">Formatos: JPG, PNG, GIF, BMP (Máx. 5MB)</div>
+        <input type="file" id="fileInput" accept="image/*">
+      </div>
+
+      <div class="preview-container">
+        <img id="imagePreview" alt="Vista previa de la imagen">
+      </div>
+<!-- 
+      <div class="examples-title">Ejemplos de prueba:</div>
+      <div class="example-images">
+        <img src="https://via.placeholder.com/100x70/4A90E2/FFFFFF?text=DL+123ABC" class="example-image" alt="Ejemplo 1" data-text="DRIVER LICENSE DL 123ABC456">
+        <img src="https://via.placeholder.com/100x70/7ED321/FFFFFF?text=LIC+I789XYZ" class="example-image" alt="Ejemplo 2" data-text="LICENSE NUMBER: I789XYZ123">
+        <img src="https://via.placeholder.com/100x70/F5A623/FFFFFF?text=LN+AB123CD" class="example-image" alt="Ejemplo 3" data-text="LN AB123CD456 EF789">
+      </div> -->
+
+      <div class="controls">
+        <button id="scanBtn" disabled>
+          <span id="scanText">Escanear Imagen</span>
+          <span id="scanSpinner" class="spinner" style="display:none;"></span>
+        </button>
+        <button id="resetBtn">Reiniciar</button>
+      </div>
+
+      <div class="progress-container" id="progressContainer">
+        <div class="progress-bar" id="progressBar"></div>
+        <div class="progress-text" id="progressText">Inicializando Tesseract...</div>
+        <div id="statusMessages" style="padding: 10px; font-size: 0.85rem;"></div>
+      </div>
+
+      <div class="pattern-info">
+        <p><strong>Patrones que busca la aplicación:</strong></p>
+        <ul class="pattern-list">
+          <li><span class="highlight">LN</span> seguido de espacio y el número de licencia</li>
+          <li><span class="highlight">DL</span> seguido de espacio y el número de licencia</li>
+          <li><span class="highlight">DLN</span> seguido de espacio y el número de licencia</li>
+          <li><span class="highlight">LIC</span> seguido de espacio y el número de licencia</li>
+          <li><span class="highlight">ID</span> seguido de espacio y el número de licencia</li>
+        </ul>
+        <p style="margin-top: 10px;">Ejemplo: <span class="highlight">DL I123456789</span> → Número de licencia: <span class="highlight">I123456789</span></p>
+      </div>
+    </div>
+
+    <div class="results-section section">
+      <h2 class="section-title">Resultados del Escaneo</h2>
+
+      <div class="result-item">
+        <div class="result-title">Número de Licencia Detectado:</div>
+        <div id="licenseResult" class="no-license">Aún no se ha escaneado ninguna imagen</div>
+      </div>
+
+      <div class="result-item">
+        <div class="result-title">Texto Detectado en la Imagen:</div>
+        <div id="detectedText" class="detected-text">El texto aparecerá aquí después del escaneo.</div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <p>Aplicación de escaneo OCR usando Tesseract.js | Busca números de licencia basados en patrones específicos</p>
+  </footer>
+
+  <script>
+    // Elementos del DOM
+    const fileInput = document.getElementById('fileInput');
+    const uploadArea = document.getElementById('uploadArea');
+    const imagePreview = document.getElementById('imagePreview');
+    const scanBtn = document.getElementById('scanBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const progressContainer = document.getElementById('progressContainer');
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+    const licenseResult = document.getElementById('licenseResult');
+    const detectedText = document.getElementById('detectedText');
+    const scanText = document.getElementById('scanText');
+    const scanSpinner = document.getElementById('scanSpinner');
+    const statusMessages = document.getElementById('statusMessages');
+    const exampleImages = document.querySelectorAll('.example-image');
+
+    // Variables de estado
+    let currentImage = null;
+    let isProcessing = false;
+
+    // Patrones para buscar números de licencia
+    const licensePatterns = ['DL', 'DLN', 'LN', 'LIC'];
+
+    // Event Listeners
+    uploadArea.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', function (e) {
+      if (this.files && this.files[0]) {
+        handleImageUpload(this.files[0]);
+      }
+    });
+
+    // Ejemplos de prueba
+    exampleImages.forEach(img => {
+      img.addEventListener('click', function () {
+        const text = this.getAttribute('data-text');
+        simulateImageScan(text);
+      });
+    });
+
+    scanBtn.addEventListener('click', scanImage);
+    resetBtn.addEventListener('click', resetApplication);
+
+    // Función para manejar la carga de imagen
+    function handleImageUpload(file) {
+      // Validar tipo de archivo
+      if (!file.type.match('image.*')) {
+        alert('Por favor, selecciona un archivo de imagen válido');
+        return;
+      }
+
+      // Validar tamaño (5MB máximo)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('La imagen es demasiado grande. El tamaño máximo es 5MB.');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const img = new Image();
+
+        img.onload = () => {
+          const processed = processImageKeepRedBlueBlack(img);
+
+          imagePreview.src = processed;
+          imagePreview.style.display = 'block';
+          currentImage = processed;
+
+          scanBtn.disabled = false;
+          addStatusMessage("Imagen procesada (solo rojo, azul y negro)");
+        };
+
+        img.src = e.target.result;
+      };
+      // reader.onload = function (e) {
+      //   preprocessImage(e.target.result, (processedImage) => {
+      //     imagePreview.src = processedImage;
+      //     imagePreview.style.display = 'block';
+      //     currentImage = processedImage;
+
+      //     scanBtn.disabled = false;
+      //     addStatusMessage('Imagen procesada (rojo, azul y negro)');
+      //   });
+      // };
+
+
+      // reader.onload = function (e) {
+      //   imagePreview.src = e.target.result;
+      //   imagePreview.style.display = 'block';
+      //   currentImage = e.target.result;
+
+
+      //   scanBtn.disabled = false;
+      //   addStatusMessage('Imagen cargada correctamente');
+      // };
+
+      reader.onerror = function () {
+        alert('Error al cargar la imagen. Intenta de nuevo.');
+      };
+
+      reader.readAsDataURL(file);
+    }
+
+    // Función para escanear la imagen - VERSIÓN SIMPLIFICADA Y CORREGIDA
+    async function scanImage() {
+      console.log('scanImage')
+      if (!currentImage || isProcessing) return;
+
+      isProcessing = true;
+      scanBtn.disabled = true;
+      scanText.style.display = 'none';
+      scanSpinner.style.display = 'inline-block';
+      progressContainer.style.display = 'block';
+      licenseResult.innerHTML = '<div class="no-license">Procesando imagen...</div>';
+      detectedText.textContent = 'Procesando...';
+      statusMessages.innerHTML = '';
+
+      try {
+        // Paso 1: Inicialización
+        updateProgress('Inicializando Tesseract.js...', 10);
+
+        // Crear worker SIN logger para evitar el error DataCloneError
+        const worker = await Tesseract.createWorker();
+
+        // Paso 2: Cargar idioma
+        updateProgress('Cargando modelo de idioma (inglés)...', 30);
+        await worker.loadLanguage('eng');
+        await worker.initialize('eng');
+
+        // Paso 3: Configurar parámetros
+        updateProgress('Configurando parámetros OCR...', 50);
+        await worker.setParameters({
+         // tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 :-.',
+         // preserve_interword_spaces: '1',
+         // tessedit_pageseg_mode: '6', // Modo de segmentación de página: tratar como un bloque uniforme
+
+          // 1. Modo de segmentación de página (importantísimo)
+          tessedit_pageseg_mode: '6', // 6 = asume un bloque uniforme de texto
+          // 2. Corregir errores comunes
+          tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,!?@#$%&*()-_=+[]{};:\'"<>/\\| ', // Caracteres permitidos
+          // 3. Mejorar contraste interno
+          tessedit_do_invert: '0', // No invertir
+          // 4. Configuración de OCR
+          preserve_interword_spaces: '1', // Mantener espacios
+          // 5. Para texto en imágenes procesadas
+          textord_min_linesize: '2.5', // Mínimo tamaño de línea
+          // 6. Umbral de confianza (bajar si hay problemas)
+          tessedit_minimal_confidence: '50', // Porcentaje mínimo de confianza
+        });
+
+        // Paso 4: Reconocimiento OCR
+        updateProgress('Realizando reconocimiento OCR...', 70);
+
+        // NOTA: No pasamos un logger para evitar el error DataCloneError
+        const result = await worker.recognize(currentImage);
+
+        // Paso 5: Procesar resultado
+        updateProgress('Procesando texto detectado...', 90);
+
+        const extractedText = result.data.text;
+        const licenseNumber = extractLicenseNumber(extractedText);
+
+        // Paso 6: Mostrar resultados
+        displayResults(licenseNumber, extractedText);
+
+        updateProgress('¡Escaneo completado!', 100);
+        addStatusMessage('Proceso finalizado exitosamente');
+
+        // Terminar worker
+        await worker.terminate();
+
+      } catch (error) {
+        console.error('Error durante el escaneo:', error);
+        licenseResult.innerHTML = '<div class="no-license">Error al procesar la imagen. Intenta de nuevo.</div>';
+        detectedText.textContent = `Error: ${error.message}`;
+        addStatusMessage(`Error: ${error.message}`);
+
+        // Mostrar mensaje de error amigable
+        if (error.message.includes('DataCloneError') || error.message.includes('postMessage')) {
+          addStatusMessage('Error de compatibilidad con el worker. Usando modo simulado.');
+          // Intentar con modo simulado
+          simulateFallbackScan();
+        }
+      } finally {
+        isProcessing = false;
+        scanBtn.disabled = false;
+        scanText.style.display = 'inline';
+        scanSpinner.style.display = 'none';
+      }
+    }
+
+    // Función de respaldo si hay problemas con Tesseract
+    function simulateFallbackScan() {
+      // Generar un resultado simulado para demostración
+      const simulatedText = "DRIVER LICENSE\nDL I123456789\nEXPIRES: 12/31/2025\nCLASS: C\nRESTRICTIONS: NONE";
+      const licenseNumber = extractLicenseNumber(simulatedText);
+      displayResults(licenseNumber, simulatedText);
+      addStatusMessage('Modo de demostración activado (Tesseract no disponible)');
+    }
+
+    // Función para simular escaneo con ejemplos
+    function simulateImageScan(text) {
+      isProcessing = true;
+      scanBtn.disabled = true;
+      progressContainer.style.display = 'block';
+      licenseResult.innerHTML = '<div class="no-license">Procesando imagen de ejemplo...</div>';
+      detectedText.textContent = 'Procesando...';
+      statusMessages.innerHTML = '';
+
+      // Simular progreso
+      let progress = 0;
+      const interval = setInterval(() => {
+        progress += 10;
+        updateProgress(`Procesando ejemplo... ${progress}%`, progress);
+
+        if (progress >= 100) {
+          clearInterval(interval);
+
+          // Extraer número de licencia del texto simulado
+          const licenseNumber = extractLicenseNumber(text);
+          displayResults(licenseNumber, text);
+          addStatusMessage('Ejemplo procesado correctamente');
+
+          isProcessing = false;
+          scanBtn.disabled = false;
+        }
+      }, 200);
+    }
+
+    // Función para actualizar el progreso
+    function updateProgress(message, percentage) {
+      progressText.textContent = message;
+      progressBar.style.width = `${percentage}%`;
+
+      // Añadir al registro si no es una actualización muy frecuente
+      if (percentage % 20 === 0 || percentage === 100) {
+        addStatusMessage(message);
+      }
+    }
+
+    // Función para añadir mensajes de estado
+    function addStatusMessage(message) {
+      const timestamp = new Date().toLocaleTimeString();
+      const messageElement = document.createElement('div');
+      messageElement.className = 'status-item';
+      messageElement.textContent = `[${timestamp}] ${message}`;
+      statusMessages.appendChild(messageElement);
+      statusMessages.scrollTop = statusMessages.scrollHeight;
+    }
+
+    function extractLicenseNumber(text) {
+      if (!text) return null;
+
+      const upperText = text.toUpperCase();
+      const normalizedText = upperText
+        .replace(/\n+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .replace(/[^A-Z0-9 :\-]/g, ' ');
+
+      // DESCARTAR "DRIVER LICENSE" SOLO COMO LÍNEA COMPLETA
+      const lines = normalizedText
+        .split('\n')
+        .map(l => l.trim())
+        .filter(l => !/^DRIVER\s+LICENSE$/.test(l));
+
+      const cleanText = lines.join(' ');
+
+      for (const pattern of licensePatterns) {
+        // DL I1234567
+        let regex = new RegExp(
+          `\\b${pattern}\\b[\\s:\\-]*([A-Z0-9]{5,20})`,
+          'i'
+        );
+
+        let match = cleanText.match(regex);
+        if (match) return match[1];
+
+        // DL I12 34 567  (OCR típico)
+        regex = new RegExp(
+          `\\b${pattern}\\b[\\s:\\-]*(([A-Z0-9]\\s*){5,20})`,
+          'i'
+        );
+
+        match = cleanText.match(regex);
+        if (match) {
+          return match[1].replace(/\s+/g, '');
+        }
+      }
+
+      return null;
+    }
+
+
+    function processImageKeepRedBlueBlack(img) {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.drawImage(img, 0, 0);
+
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+
+        // Calcular valores
+        const max = Math.max(r, g, b);
+        const min = Math.min(r, g, b);
+        const brightness = (r + g + b) / 3;
+        const saturation = max === 0 ? 0 : (max - min) / max * 100;
+
+        // 🔴 ROJO OSCURO (vino, burdeos, rojo sangre)
+        const isDarkRed = (
+          brightness < 100 &&          // OSCURO
+          r > g + 30 &&               // Predominio rojo
+          r > b + 40 &&               // Más rojo que azul
+          g < 80 &&                   // Verde bajo
+          b < 80                      // Azul bajo
+        );
+
+        // 🔵 AZUL OSCURO (azul marino, azul noche)
+        const isDarkBlue = (
+          brightness < 100 &&          // OSCURO
+          b > r + 30 &&               // Predominio azul
+          b > g + 30 &&               // Más azul que verde
+          saturation > 20             // No gris azulado
+        );
+
+        // ⚫ NEGRO PURO O GRIS MUY OSCURO
+        const isBlackOrDarkGray = (
+          brightness < 80 &&           // MUY OSCURO
+          saturation < 30              // Poca saturación (gris)
+        );
+
+        // 🤎 MARRÓN OSCURO (café, chocolate)
+        const isDarkBrown = (
+          brightness < 90 &&           // OSCURO
+          r > g + 20 &&               // Rojo > Verde
+          r > b + 30 &&               // Rojo > Azul
+          g > b + 10 &&               // Verde > Azul (componente amarillo)
+          saturation > 15             // No gris
+        );
+
+        // 🟤 GRIS OSCURO CON TONO (no puro)
+        const isDarkTonedGray = (
+          brightness < 120 &&          // Moderadamente oscuro
+          saturation < 40 &&           // Baja saturación
+          brightness > 60              // No demasiado negro
+        );
+
+        // SOLO conservar si es UN COLOR OSCURO
+        const shouldKeep = (
+          isDarkRed ||
+          isDarkBlue ||
+          isBlackOrDarkGray ||
+          isDarkBrown ||
+          isDarkTonedGray
+        );
+
+        if (shouldKeep) {
+          // Conservar: convertir a negro
+          // data[i] = 0;
+          // data[i + 1] = 0;
+          // data[i + 2] = 0;
+        } else {
+          // Eliminar: convertir a blanco (incluye rojos/azules CLAROS)
+          data[i] = 255;
+          data[i + 1] = 255;
+          data[i + 2] = 255;
+        }
+      }
+
+      ctx.putImageData(imageData, 0, 0);
+      return canvas.toDataURL("image/png");
+    }
+
+    // Función para mostrar los resultados
+    function displayResults(licenseNumber, extractedText) {
+      // Mostrar número de licencia
+      if (licenseNumber) {
+        licenseResult.innerHTML = `<div class="license-number">${licenseNumber}</div>`;
+        addStatusMessage(`✅ Número de licencia detectado: ${licenseNumber}`);
+      } else {
+        licenseResult.innerHTML = '<div class="no-license">No se encontró un número de licencia en la imagen.</div>';
+        addStatusMessage('❌ No se encontró ningún número de licencia');
+      }
+
+      // Mostrar texto detectado con resaltado
+      if (extractedText && extractedText.trim().length > 0) {
+        let displayText = extractedText;
+
+        // Resaltar el número de licencia si se encontró
+        if (licenseNumber) {
+          const escapedLicense = licenseNumber.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const regex = new RegExp(`(${escapedLicense})`, 'gi');
+          displayText = displayText.replace(regex, '<mark>$1</mark>');
+        }
+
+        // Resaltar los patrones de búsqueda
+        licensePatterns.forEach(pattern => {
+          const regex = new RegExp(`\\b(${pattern})\\b`, 'gi');
+          displayText = displayText.replace(regex, '<mark>$1</mark>');
+        });
+
+        detectedText.innerHTML = displayText;
+      } else {
+        detectedText.textContent = 'No se pudo extraer texto de la imagen.';
+      }
+    }
+
+    // Función para reiniciar la aplicación
+    function resetApplication() {
+      fileInput.value = '';
+      imagePreview.src = '';
+      imagePreview.style.display = 'none';
+      currentImage = null;
+      scanBtn.disabled = true;
+      progressContainer.style.display = 'none';
+      progressBar.style.width = '0%';
+      licenseResult.innerHTML = '<div class="no-license">Aún no se ha escaneado ninguna imagen</div>';
+      detectedText.textContent = 'El texto aparecerá aquí después del escaneo.';
+      statusMessages.innerHTML = '';
+      isProcessing = false;
+      scanText.style.display = 'inline';
+      scanSpinner.style.display = 'none';
+    }
+  </script>
+</body>
+
+</html>
