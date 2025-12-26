@@ -1,0 +1,474 @@
+/**
+ * Copyright (c) Microblink Ltd. All rights reserved.
+ */
+
+/* --- Reticle --- */
+
+$angle: 67.5;
+
+$reticle-bg: (
+  default:
+    map-get(
+      map-get(map-get($base-colors, text-quaternary), onlight),
+      foreground
+    ),
+  error:
+    rgba(
+      map-get(
+        map-get(map-get($base-colors, semantic-error), onlight),
+        background
+      ),
+      0.75
+    ),
+);
+
+// Animations
+@keyframes reticle-rotation {
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes reticle-horizontal-shrink {
+  0% {
+    height: 50%;
+    top: 25%;
+  }
+
+  50% {
+    height: 30%;
+    top: 35%;
+  }
+
+  80% {
+    height: 30%;
+    top: 35%;
+  }
+
+  100% {
+    height: 50%;
+    top: 25%;
+  }
+}
+
+// Flip animations
+// Reticle
+@keyframes reticle-cursor-horizontal-flip {
+  0% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+// Reticle cursor
+@keyframes reticle-horizontal-flip {
+  0% {
+    // Front
+    border-radius: 0;
+    background-color: transparent;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background-image: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iOTYiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA5NiA2MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik02IDBDMi42ODYyOSAwIDAgMi42ODYyOSAwIDZWNTRDMCA1Ny4zMTM3IDIuNjg2MjkgNjAgNiA2MEg5MEM5My4zMTM3IDYwIDk2IDU3LjMxMzcgOTYgNTRWNkM5NiAyLjY4NjI5IDkzLjMxMzcgMCA5MCAwSDZaTTQ4LjY3MTMgMTAuOEM0Ny4zMDY0IDEwLjggNDYuMiAxMS44NzQ1IDQ2LjIgMTMuMkM0Ni4yIDE0LjUyNTUgNDcuMzA2NCAxNS42IDQ4LjY3MTMgMTUuNkg4Mi4xMjg3QzgzLjQ5MzYgMTUuNiA4NC42IDE0LjUyNTUgODQuNiAxMy4yQzg0LjYgMTEuODc0NSA4My40OTM2IDEwLjggODIuMTI4NyAxMC44SDQ4LjY3MTNaTTcyIDQ5LjJDNzIgNDcuODc0NSA3My4wNTgyIDQ2LjggNzQuMzYzNiA0Ni44SDgxLjYzNjRDODIuOTQxOCA0Ni44IDg0IDQ3Ljg3NDUgODQgNDkuMkM4NCA1MC41MjU1IDgyLjk0MTggNTEuNiA4MS42MzY0IDUxLjZINzQuMzYzNkM3My4wNTgyIDUxLjYgNzIgNTAuNTI1NSA3MiA0OS4yWk00OC43MDE5IDMzLjZDNDcuMzIwMSAzMy42IDQ2LjIgMzQuNjc0NSA0Ni4yIDM2QzQ2LjIgMzcuMzI1NSA0Ny4zMjAxIDM4LjQgNDguNzAxOSAzOC40SDY0LjA5ODFDNjUuNDc5OSAzOC40IDY2LjYgMzcuMzI1NSA2Ni42IDM2QzY2LjYgMzQuNjc0NSA2NS40Nzk5IDMzLjYgNjQuMDk4MSAzMy42SDQ4LjcwMTlaTTQ2LjIgMjQuNkM0Ni4yIDIzLjI3NDUgNDcuMzA2NCAyMi4yIDQ4LjY3MTMgMjIuMkg4Mi4xMjg3QzgzLjQ5MzYgMjIuMiA4NC42IDIzLjI3NDUgODQuNiAyNC42Qzg0LjYgMjUuOTI1NSA4My40OTM2IDI3IDgyLjEyODcgMjdINDguNjcxM0M0Ny4zMDY0IDI3IDQ2LjIgMjUuOTI1NSA0Ni4yIDI0LjZaTTEzLjI2NDggMTAuOEMxMS41NzIxIDEwLjggMTAuMiAxMi4yMDc0IDEwLjIgMTMuOTQzNlYzNy45NjgzQzEwLjIgMzkuMDg1NCAxMC43NjkgNDAuMDY1NSAxMS42MjA2IDQwLjYyMTVDMTEuODg1OSA0MC43OTQ3IDEyLjIxMDMgNDAuODQ0NyAxMi41MTM1IDQwLjc1OUMxMi44MTY4IDQwLjY3MzQgMTMuMDcwNSA0MC40NjAyIDEzLjIxMiA0MC4xNzIxQzE0LjU5NyAzNy4zNTI1IDE2Ljg4OTkgMzUuMTUwOSAxOS42NDk1IDM0LjAxMDFDMjAuMDIzNSAzMy44NTU1IDIwLjI4NjcgMzMuNTA1NiAyMC4zMzc1IDMzLjA5NTRDMjAuMzg4NCAzMi42ODUyIDIwLjIxOSAzMi4yNzg4IDE5Ljg5NDggMzIuMDMzMUMxOC4xNzIzIDMwLjcyODEgMTcuMDU1OCAyOC42MjY0IDE3LjA1NTggMjYuMjUzOUMxNy4wNTU4IDIyLjI5MTUgMjAuMTcwMSAxOS4wODkyIDI0IDE5LjA4OTJDMjcuODI5OSAxOS4wODkyIDMwLjk0NDIgMjIuMjkxNSAzMC45NDQyIDI2LjI1MzlDMzAuOTQ0MiAyOC42MjY0IDI5LjgyNzcgMzAuNzI4MSAyOC4xMDUyIDMyLjAzMzFDMjcuNzgxIDMyLjI3ODggMjcuNjExNiAzMi42ODUyIDI3LjY2MjUgMzMuMDk1NEMyNy43MTMzIDMzLjUwNTYgMjcuOTc2NSAzMy44NTU1IDI4LjM1MDUgMzQuMDEwMUMzMS4xMTAxIDM1LjE1MDkgMzMuNDAzIDM3LjM1MjUgMzQuNzg4IDQwLjE3MjFDMzQuOTI5NSA0MC40NjAyIDM1LjE4MzIgNDAuNjczNCAzNS40ODY0IDQwLjc1OUMzNS43ODk3IDQwLjg0NDcgMzYuMTE0MSA0MC43OTQ3IDM2LjM3OTQgNDAuNjIxNUMzNy4yMzEgNDAuMDY1NSAzNy44IDM5LjA4NTQgMzcuOCAzNy45NjgzVjEzLjk0MzZDMzcuOCAxMi4yMDc0IDM2LjQyNzkgMTAuOCAzNC43MzUyIDEwLjhIMTMuMjY0OFoiIGZpbGw9IndoaXRlIi8+Cjwvc3ZnPgoK);
+    opacity: 0;
+  }
+
+  5% {
+    opacity: 1;
+  }
+
+  15% {
+    transform: rotateY(0deg);
+    background-image: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iOTYiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA5NiA2MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik02IDBDMi42ODYyOSAwIDAgMi42ODYyOSAwIDZWNTRDMCA1Ny4zMTM3IDIuNjg2MjkgNjAgNiA2MEg5MEM5My4zMTM3IDYwIDk2IDU3LjMxMzcgOTYgNTRWNkM5NiAyLjY4NjI5IDkzLjMxMzcgMCA5MCAwSDZaTTQ4LjY3MTMgMTAuOEM0Ny4zMDY0IDEwLjggNDYuMiAxMS44NzQ1IDQ2LjIgMTMuMkM0Ni4yIDE0LjUyNTUgNDcuMzA2NCAxNS42IDQ4LjY3MTMgMTUuNkg4Mi4xMjg3QzgzLjQ5MzYgMTUuNiA4NC42IDE0LjUyNTUgODQuNiAxMy4yQzg0LjYgMTEuODc0NSA4My40OTM2IDEwLjggODIuMTI4NyAxMC44SDQ4LjY3MTNaTTcyIDQ5LjJDNzIgNDcuODc0NSA3My4wNTgyIDQ2LjggNzQuMzYzNiA0Ni44SDgxLjYzNjRDODIuOTQxOCA0Ni44IDg0IDQ3Ljg3NDUgODQgNDkuMkM4NCA1MC41MjU1IDgyLjk0MTggNTEuNiA4MS42MzY0IDUxLjZINzQuMzYzNkM3My4wNTgyIDUxLjYgNzIgNTAuNTI1NSA3MiA0OS4yWk00OC43MDE5IDMzLjZDNDcuMzIwMSAzMy42IDQ2LjIgMzQuNjc0NSA0Ni4yIDM2QzQ2LjIgMzcuMzI1NSA0Ny4zMjAxIDM4LjQgNDguNzAxOSAzOC40SDY0LjA5ODFDNjUuNDc5OSAzOC40IDY2LjYgMzcuMzI1NSA2Ni42IDM2QzY2LjYgMzQuNjc0NSA2NS40Nzk5IDMzLjYgNjQuMDk4MSAzMy42SDQ4LjcwMTlaTTQ2LjIgMjQuNkM0Ni4yIDIzLjI3NDUgNDcuMzA2NCAyMi4yIDQ4LjY3MTMgMjIuMkg4Mi4xMjg3QzgzLjQ5MzYgMjIuMiA4NC42IDIzLjI3NDUgODQuNiAyNC42Qzg0LjYgMjUuOTI1NSA4My40OTM2IDI3IDgyLjEyODcgMjdINDguNjcxM0M0Ny4zMDY0IDI3IDQ2LjIgMjUuOTI1NSA0Ni4yIDI0LjZaTTEzLjI2NDggMTAuOEMxMS41NzIxIDEwLjggMTAuMiAxMi4yMDc0IDEwLjIgMTMuOTQzNlYzNy45NjgzQzEwLjIgMzkuMDg1NCAxMC43NjkgNDAuMDY1NSAxMS42MjA2IDQwLjYyMTVDMTEuODg1OSA0MC43OTQ3IDEyLjIxMDMgNDAuODQ0NyAxMi41MTM1IDQwLjc1OUMxMi44MTY4IDQwLjY3MzQgMTMuMDcwNSA0MC40NjAyIDEzLjIxMiA0MC4xNzIxQzE0LjU5NyAzNy4zNTI1IDE2Ljg4OTkgMzUuMTUwOSAxOS42NDk1IDM0LjAxMDFDMjAuMDIzNSAzMy44NTU1IDIwLjI4NjcgMzMuNTA1NiAyMC4zMzc1IDMzLjA5NTRDMjAuMzg4NCAzMi42ODUyIDIwLjIxOSAzMi4yNzg4IDE5Ljg5NDggMzIuMDMzMUMxOC4xNzIzIDMwLjcyODEgMTcuMDU1OCAyOC42MjY0IDE3LjA1NTggMjYuMjUzOUMxNy4wNTU4IDIyLjI5MTUgMjAuMTcwMSAxOS4wODkyIDI0IDE5LjA4OTJDMjcuODI5OSAxOS4wODkyIDMwLjk0NDIgMjIuMjkxNSAzMC45NDQyIDI2LjI1MzlDMzAuOTQ0MiAyOC42MjY0IDI5LjgyNzcgMzAuNzI4MSAyOC4xMDUyIDMyLjAzMzFDMjcuNzgxIDMyLjI3ODggMjcuNjExNiAzMi42ODUyIDI3LjY2MjUgMzMuMDk1NEMyNy43MTMzIDMzLjUwNTYgMjcuOTc2NSAzMy44NTU1IDI4LjM1MDUgMzQuMDEwMUMzMS4xMTAxIDM1LjE1MDkgMzMuNDAzIDM3LjM1MjUgMzQuNzg4IDQwLjE3MjFDMzQuOTI5NSA0MC40NjAyIDM1LjE4MzIgNDAuNjczNCAzNS40ODY0IDQwLjc1OUMzNS43ODk3IDQwLjg0NDcgMzYuMTE0MSA0MC43OTQ3IDM2LjM3OTQgNDAuNjIxNUMzNy4yMzEgNDAuMDY1NSAzNy44IDM5LjA4NTQgMzcuOCAzNy45NjgzVjEzLjk0MzZDMzcuOCAxMi4yMDc0IDM2LjQyNzkgMTAuOCAzNC43MzUyIDEwLjhIMTMuMjY0OFoiIGZpbGw9IndoaXRlIi8+Cjwvc3ZnPgoK);
+  }
+
+  20% {
+    // Back image
+    transform: rotateY(90deg);
+    background-image: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iOTYiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA5NiA2MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0wIDZDMCAyLjY4NjI5IDIuNjg2MjkgMCA2IDBIOTBDOTMuMzEzNyAwIDk2IDIuNjg2MjkgOTYgNlY1NEM5NiA1Ny4zMTM3IDkzLjMxMzcgNjAgOTAgNjBINkMyLjY4NjI5IDYwIDAgNTcuMzEzNyAwIDU0VjZaTTEwLjIgMTMuOEMxMC4yIDEyLjQ3NDUgMTEuMzEwMyAxMS40IDEyLjY4IDExLjRIODIuMTJDODMuNDg5NyAxMS40IDg0LjYgMTIuNDc0NSA4NC42IDEzLjhDODQuNiAxNS4xMjU1IDgzLjQ4OTcgMTYuMiA4Mi4xMiAxNi4ySDEyLjY4QzExLjMxMDMgMTYuMiAxMC4yIDE1LjEyNTUgMTAuMiAxMy44Wk04MC43IDQ5LjJDODIuODUzOSA0OS4yIDg0LjYgNDcuNDUzOSA4NC42IDQ1LjNDODQuNiA0My4xNDYxIDgyLjg1MzkgNDEuNCA4MC43IDQxLjRDNzguNTQ2MSA0MS40IDc2LjggNDMuMTQ2MSA3Ni44IDQ1LjNDNzYuOCA0Ny40NTM5IDc4LjU0NjEgNDkuMiA4MC43IDQ5LjJaTTEwLjIgNDYuMkMxMC4yIDQ0Ljg3NDUgMTEuMjk3NSA0My44IDEyLjY1MTQgNDMuOEgzNC4xNDg2QzM1LjUwMjUgNDMuOCAzNi42IDQ0Ljg3NDUgMzYuNiA0Ni4yQzM2LjYgNDcuNTI1NSAzNS41MDI1IDQ4LjYgMzQuMTQ4NiA0OC42SDEyLjY1MTRDMTEuMjk3NSA0OC42IDEwLjIgNDcuNTI1NSAxMC4yIDQ2LjJaTTEyLjY3NDIgMzIuNEMxMS4zMDc3IDMyLjQgMTAuMiAzMy40NzQ1IDEwLjIgMzQuOEMxMC4yIDM2LjEyNTUgMTEuMzA3NyAzNy4yIDEyLjY3NDIgMzcuMkg0My4xMjU4QzQ0LjQ5MjMgMzcuMiA0NS42IDM2LjEyNTUgNDUuNiAzNC44QzQ1LjYgMzMuNDc0NSA0NC40OTIzIDMyLjQgNDMuMTI1OCAzMi40SDEyLjY3NDJaIiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K);
+  }
+
+  25% {
+    transform: rotateY(-15deg);
+    background-image: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iOTYiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA5NiA2MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0wIDZDMCAyLjY4NjI5IDIuNjg2MjkgMCA2IDBIOTBDOTMuMzEzNyAwIDk2IDIuNjg2MjkgOTYgNlY1NEM5NiA1Ny4zMTM3IDkzLjMxMzcgNjAgOTAgNjBINkMyLjY4NjI5IDYwIDAgNTcuMzEzNyAwIDU0VjZaTTEwLjIgMTMuOEMxMC4yIDEyLjQ3NDUgMTEuMzEwMyAxMS40IDEyLjY4IDExLjRIODIuMTJDODMuNDg5NyAxMS40IDg0LjYgMTIuNDc0NSA4NC42IDEzLjhDODQuNiAxNS4xMjU1IDgzLjQ4OTcgMTYuMiA4Mi4xMiAxNi4ySDEyLjY4QzExLjMxMDMgMTYuMiAxMC4yIDE1LjEyNTUgMTAuMiAxMy44Wk04MC43IDQ5LjJDODIuODUzOSA0OS4yIDg0LjYgNDcuNDUzOSA4NC42IDQ1LjNDODQuNiA0My4xNDYxIDgyLjg1MzkgNDEuNCA4MC43IDQxLjRDNzguNTQ2MSA0MS40IDc2LjggNDMuMTQ2MSA3Ni44IDQ1LjNDNzYuOCA0Ny40NTM5IDc4LjU0NjEgNDkuMiA4MC43IDQ5LjJaTTEwLjIgNDYuMkMxMC4yIDQ0Ljg3NDUgMTEuMjk3NSA0My44IDEyLjY1MTQgNDMuOEgzNC4xNDg2QzM1LjUwMjUgNDMuOCAzNi42IDQ0Ljg3NDUgMzYuNiA0Ni4yQzM2LjYgNDcuNTI1NSAzNS41MDI1IDQ4LjYgMzQuMTQ4NiA0OC42SDEyLjY1MTRDMTEuMjk3NSA0OC42IDEwLjIgNDcuNTI1NSAxMC4yIDQ2LjJaTTEyLjY3NDIgMzIuNEMxMS4zMDc3IDMyLjQgMTAuMiAzMy40NzQ1IDEwLjIgMzQuOEMxMC4yIDM2LjEyNTUgMTEuMzA3NyAzNy4yIDEyLjY3NDIgMzcuMkg0My4xMjU4QzQ0LjQ5MjMgMzcuMiA0NS42IDM2LjEyNTUgNDUuNiAzNC44QzQ1LjYgMzMuNDc0NSA0NC40OTIzIDMyLjQgNDMuMTI1OCAzMi40SDEyLjY3NDJaIiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K);
+  }
+
+  30% {
+    transform: rotateY(0deg);
+  }
+
+  95% {
+    opacity: 1;
+  }
+
+  100% {
+    background-image: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iOTYiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA5NiA2MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0wIDZDMCAyLjY4NjI5IDIuNjg2MjkgMCA2IDBIOTBDOTMuMzEzNyAwIDk2IDIuNjg2MjkgOTYgNlY1NEM5NiA1Ny4zMTM3IDkzLjMxMzcgNjAgOTAgNjBINkMyLjY4NjI5IDYwIDAgNTcuMzEzNyAwIDU0VjZaTTEwLjIgMTMuOEMxMC4yIDEyLjQ3NDUgMTEuMzEwMyAxMS40IDEyLjY4IDExLjRIODIuMTJDODMuNDg5NyAxMS40IDg0LjYgMTIuNDc0NSA4NC42IDEzLjhDODQuNiAxNS4xMjU1IDgzLjQ4OTcgMTYuMiA4Mi4xMiAxNi4ySDEyLjY4QzExLjMxMDMgMTYuMiAxMC4yIDE1LjEyNTUgMTAuMiAxMy44Wk04MC43IDQ5LjJDODIuODUzOSA0OS4yIDg0LjYgNDcuNDUzOSA4NC42IDQ1LjNDODQuNiA0My4xNDYxIDgyLjg1MzkgNDEuNCA4MC43IDQxLjRDNzguNTQ2MSA0MS40IDc2LjggNDMuMTQ2MSA3Ni44IDQ1LjNDNzYuOCA0Ny40NTM5IDc4LjU0NjEgNDkuMiA4MC43IDQ5LjJaTTEwLjIgNDYuMkMxMC4yIDQ0Ljg3NDUgMTEuMjk3NSA0My44IDEyLjY1MTQgNDMuOEgzNC4xNDg2QzM1LjUwMjUgNDMuOCAzNi42IDQ0Ljg3NDUgMzYuNiA0Ni4yQzM2LjYgNDcuNTI1NSAzNS41MDI1IDQ4LjYgMzQuMTQ4NiA0OC42SDEyLjY1MTRDMTEuMjk3NSA0OC42IDEwLjIgNDcuNTI1NSAxMC4yIDQ2LjJaTTEyLjY3NDIgMzIuNEMxMS4zMDc3IDMyLjQgMTAuMiAzMy40NzQ1IDEwLjIgMzQuOEMxMC4yIDM2LjEyNTUgMTEuMzA3NyAzNy4yIDEyLjY3NDIgMzcuMkg0My4xMjU4QzQ0LjQ5MjMgMzcuMiA0NS42IDM2LjEyNTUgNDUuNiAzNC44QzQ1LjYgMzMuNDc0NSA0NC40OTIzIDMyLjQgNDMuMTI1OCAzMi40SDEyLjY3NDJaIiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K);
+    border-radius: 0;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background-color: transparent;
+    opacity: 0;
+  }
+}
+
+// Shape & states
+:host .reticle {
+  box-sizing: border-box;
+
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background-color: map-get($reticle-bg, default);
+  background-position: center;
+  background-size: contain;
+  background-repeat: no-repeat;
+
+  -webkit-backdrop-filter: blur(var(--mb-blur-filter));
+  backdrop-filter: blur(var(--mb-blur-filter));
+
+  transition: all 0.4s ease;
+
+  &__cursor {
+    box-sizing: border-box;
+
+    display: block;
+    position: absolute;
+    width: 50%;
+    height: 50%;
+    left: 25%;
+    top: 25%;
+    border-radius: 50%;
+    border-color: transparent; // rgba(map-get(map-get(map-get($base-colors, background-primary), onlight), foreground), 0.75);
+    border-style: solid;
+    border-width: $base-unit;
+    transition: all 125ms cubic-bezier(0.42, 0.01, 0.35, 1.74);
+    background-position: center;
+    background-size: contain;
+    background-repeat: no-repeat;
+
+    &::before {
+      content: "";
+      position: absolute;
+      width: $base-unit;
+      height: $base-unit;
+      top: 50%;
+      left: 50%;
+      transition: all 0.2s ease;
+      transform-origin: center;
+      transform: translate(-50%, -50%);
+      background-color: map-get(
+        map-get(map-get($base-colors, background-primary), onlight),
+        foreground
+      );
+      border-radius: 50%;
+    }
+
+    &::after {
+      content: "";
+      position: absolute;
+      top: -$base-unit;
+      left: -$base-unit;
+      width: calc(50% + #{$base-unit});
+      height: calc(50% + #{$base-unit});
+      display: block;
+      border-left-width: $base-unit;
+      border-left-style: solid;
+      border-left-color: map-get(
+        map-get(map-get($base-colors, background-primary), onlight),
+        foreground
+      );
+      border-top-width: $base-unit;
+      border-top-style: solid;
+      border-top-color: map-get(
+        map-get(map-get($base-colors, background-primary), onlight),
+        foreground
+      );
+      border-top-left-radius: 100%;
+      transition: all 0.2s ease;
+      opacity: 0;
+      filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.1));
+    }
+  }
+
+  &__el {
+    box-sizing: border-box;
+  }
+
+  &__done {
+    display: block;
+    position: absolute;
+    width: 50%;
+    height: 50%;
+    left: 25%;
+    top: 25%;
+    transition: all 125ms cubic-bezier(0.42, 0.01, 0.35, 1.74);
+    transform-origin: center;
+    transform: rotate(15deg) translateY(-5%);
+    opacity: 0;
+  }
+
+  // States
+
+  // States labels
+  &.is-default ~ .label[data-message="is-default"],
+  &.is-detection ~ .label[data-message="is-detection"],
+  &.is-classification ~ .label[data-message="is-classification"],
+  &.is-done ~ .label[data-message="is-done"],
+  &.is-done-all ~ .label[data-message="is-done-all"],
+  &.is-flip ~ .label[data-message="is-flip"],
+  &.is-error-move-farther ~ .label[data-message="is-error-move-farther"],
+  &.is-error-move-closer ~ .label[data-message="is-error-move-closer"],
+  &.is-error-adjust-angle ~ .label[data-message="is-error-adjust-angle"] {
+    opacity: 1;
+    visibility: visible;
+    margin: 2 * $base-unit 0 0 0;
+  }
+
+  &.is-flip ~ .label[data-message="is-flip"] {
+  }
+
+  &.is-default {
+    .reticle {
+      &__cursor {
+        animation: reticle-rotation 1000ms ease-in-out infinite;
+        border-style: none;
+      }
+
+      &__el {
+        position: absolute;
+        display: block;
+        width: 50%;
+        height: 50%;
+        overflow: hidden;
+
+        &::after,
+        &::before {
+          content: "";
+          position: absolute;
+
+          display: block;
+          width: 100%;
+          height: 100%;
+        }
+
+        &:nth-child(1) {
+          top: 0;
+          left: 0;
+
+          &::after,
+          &::before {
+            top: 0;
+            left: 0;
+            border-top: 4px solid rgba(#fff, 0.5);
+            border-left: 4px solid rgba(#fff, 0.5);
+            border-top-left-radius: 100%;
+            transform-origin: bottom right;
+          }
+
+          &::after {
+            transform: rotate(#{$angle}deg);
+          }
+
+          &::before {
+            transform: rotate(-#{$angle}deg);
+          }
+        }
+
+        &:nth-child(2) {
+          top: 0;
+          right: 0;
+
+          &::after,
+          &::before {
+            top: 0;
+            right: 0;
+            border-top: 4px solid rgba(#fff, 0.5);
+            border-right: 4px solid rgba(#fff, 0.5);
+            border-top-right-radius: 100%;
+            transform-origin: bottom left;
+          }
+
+          &::after {
+            transform: rotate(#{$angle}deg);
+          }
+
+          &::before {
+            transform: rotate(-#{$angle}deg);
+          }
+        }
+
+        &:nth-child(3) {
+          bottom: 0;
+          right: 0;
+
+          &::after,
+          &::before {
+            bottom: 0;
+            right: 0;
+            transform-origin: top left;
+            border-bottom: 4px solid rgba(#fff, 0.5);
+            border-right: 4px solid rgba(#fff, 0.5);
+            border-bottom-right-radius: 100%;
+          }
+
+          &::after {
+            transform: rotate(#{$angle}deg);
+          }
+
+          &::before {
+            transform: rotate(-#{$angle}deg);
+          }
+        }
+
+        &:nth-child(4) {
+          bottom: 0;
+          left: 0;
+
+          &::after,
+          &::before {
+            bottom: 0;
+            left: 0;
+            border-bottom: 4px solid rgba(#fff, 0.5);
+            border-left: 4px solid rgba(#fff, 0.5);
+            border-bottom-left-radius: 100%;
+            transform-origin: top right;
+          }
+
+          &::after {
+            transform: rotate(#{$angle}deg);
+          }
+
+          &::before {
+            transform: rotate(-#{$angle}deg);
+          }
+        }
+      }
+    }
+  }
+
+  &.is-detection {
+    .reticle__cursor {
+      border-color: rgba(
+        map-get(
+          map-get(map-get($base-colors, background-primary), onlight),
+          foreground
+        ),
+        0.75
+      );
+    }
+  }
+
+  &.is-classification {
+    .reticle__cursor {
+      animation: reticle-rotation 250ms cubic-bezier(0.4, 0.02, 1, 1) infinite;
+      border-style: solid;
+      border-color: rgba(
+        map-get(
+          map-get(map-get($base-colors, background-primary), onlight),
+          foreground
+        ),
+        0.25
+      );
+
+      &::after {
+        opacity: 1;
+      }
+    }
+  }
+
+  &.is-flip {
+    animation: reticle-horizontal-flip 3.5s cubic-bezier(0.4, 0.02, 1, 1) both;
+
+    .reticle__cursor {
+      transform-style: preserve-3d;
+      animation: reticle-cursor-horizontal-flip 3.5s
+        cubic-bezier(0.4, 0.02, 1, 1) both;
+    }
+  }
+
+  // Front side scanning is over (BlinkID Multi-side)
+  &.is-done,
+  &.is-done-all {
+    background-color: map-get(
+      map-get(map-get($base-colors, background-primary), onlight),
+      foreground
+    );
+    box-shadow:
+      0px 2px 24px rgba(0, 0, 0, 0.1),
+      0px 2px 8px rgba(0, 0, 0, 0.05);
+    transition: all 125ms cubic-bezier(0.4, 0.02, 1, 1);
+
+    .reticle__done {
+      transform: rotate(0) translateY(0);
+      opacity: 1;
+    }
+  }
+
+  &.is-done-all {
+    .reticle__cursor {
+      &::before {
+        width: 150vw;
+        height: 150vh;
+        opacity: 0;
+        transition: all 200ms ease;
+      }
+    }
+  }
+
+  &.is-error-move-farther {
+    background-color: map-get($reticle-bg, error);
+
+    .reticle__cursor {
+      border-color: rgba(
+        map-get(
+          map-get(map-get($base-colors, background-primary), onlight),
+          foreground
+        ),
+        0.75
+      );
+      width: 40%;
+      height: 40%;
+      left: 30%;
+      top: 30%;
+      transition: all 125ms cubic-bezier(0.42, 0.01, 0.35, 1.74);
+    }
+  }
+
+  &.is-error-move-closer {
+    background-color: map-get($reticle-bg, error);
+
+    .reticle__cursor {
+      border-color: rgba(
+        map-get(
+          map-get(map-get($base-colors, background-primary), onlight),
+          foreground
+        ),
+        0.75
+      );
+      width: 60%;
+      height: 60%;
+      left: 20%;
+      top: 20%;
+      transition: all 125ms cubic-bezier(0.42, 0.01, 0.35, 1.74);
+    }
+  }
+
+  &.is-error-adjust-angle {
+    background-color: map-get($reticle-bg, error);
+
+    .reticle__cursor {
+      border-color: rgba(
+        map-get(
+          map-get(map-get($base-colors, background-primary), onlight),
+          foreground
+        ),
+        0.75
+      );
+      animation: reticle-horizontal-shrink 600ms
+        cubic-bezier(0.42, 0.01, 0.35, 1.74);
+    }
+  }
+}
