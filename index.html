@@ -1,101 +1,29 @@
 <!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8" />
-  <title>BlinkID – Licencia USA (frente)</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
-    }
-    video {
-      width: 100%;
-      max-width: 360px;
-      border: 1px solid #ccc;
-      margin-bottom: 10px;
-    }
-    pre {
-      background: #f4f4f4;
-      padding: 10px;
-      white-space: pre-wrap;
-    }
-  </style>
-</head>
-<body>
+<html lang="en">
+    <head>
+        <title>Example: BlinkID Scan From Camera</title>
+        <meta charset="utf-8">
+        <link rel="stylesheet" type="text/css" href="style.css">
+    </head>
+    <body>
+        <div id="screen-initial">
+            <h1 id="msg">Loading...</h1>
+            <progress id="load-progress" value="0" max="100"></progress>
+        </div>
 
-<h2>Escaneo de licencia de conducir USA</h2>
+        <div id="screen-start" class="hidden">
+            <a href="#" id="start-scan">Start scan</a>
+        </div>
 
-<video id="video" autoplay playsinline></video>
-<br>
-<button id="start">Iniciar escaneo</button>
+        <div id="screen-scanning" class="hidden">
+            <video id="camera-feed" playsinline></video>
+            <!-- Recognition events will be drawn here. -->
+            <canvas id="camera-feedback"></canvas>
+            <p id="camera-guides">Point the camera towards front side of a document.</p>
+        </div>
+    </body>
 
-<h3>Resultado</h3>
-<pre id="output">Esperando…</pre>
-
-<!-- SDK principal de BlinkID -->
-<script src="blinkid-sdk.min.js"></script>
-
-<script>
-(async () => {
-
-  const video = document.getElementById("video");
-  const output = document.getElementById("output");
-  const startBtn = document.getElementById("start");
-
-  // 🔴 REEMPLAZA con tu license key real
-  const LICENSE_KEY = "sRwCABpyaWhlcm5hbmRlemxvcGV6LmdpdGh1Yi5pbwZsZXlKRGNtVmhkR1ZrVDI0aU9qRTNOalkzTmpNeU9EVTFNVE1zSWtOeVpXRjBaV1JHYjNJaU9pSmtOalUwWXpNM1pDMDJNbU5sTFRRMk1EUXRPR1ptWmkxa1pUWTNNMlkwWlRnME1HUWlmUT09403BAND5GrmfSFcuRHJBArM5adoBLm8IIIqIKZuRgoZ6YvRt/Q8E5xoVPEWceAURsWfN7uff7ZvZ7+WT7RgP3+aOCzl2j+ZZGydP9KaFu64Z1DNaP9n4E7kG3LQVJQ==";
-
-  startBtn.onclick = async () => {
-    try {
-      output.textContent = "Inicializando BlinkID…";
-
-      const sdk = await BlinkIDSDK.initialize({
-        licenseKey: LICENSE_KEY,
-
-        // 👇 carpeta donde están los WASM
-        engineLocation: "/dist",
-
-        // 👇 porque estás usando lightweight/basic
-        wasmType: "lightweight"
-      });
-
-      const recognizer = await sdk.createBlinkIdRecognizer();
-
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" }
-      });
-
-      video.srcObject = stream;
-      output.textContent = "Escaneando… apunta al frente de la licencia";
-
-      sdk.recognizeFromVideo(video, recognizer, (result) => {
-
-        if (result.state === BlinkIDSDK.RecognizerResultState.Valid) {
-
-          // detener cámara
-          stream.getTracks().forEach(t => t.stop());
-
-          const r = result.result;
-
-          output.textContent = JSON.stringify({
-            licenseNumber: r.documentNumber,
-            firstName: r.firstName,
-            lastName: r.lastName,
-            dateOfBirth: r.dateOfBirth,
-            expirationDate: r.dateOfExpiry,
-            issuingState: r.issuingAuthority
-          }, null, 2);
-        }
-      });
-
-    } catch (err) {
-      console.error(err);
-      output.textContent = "Error: " + err.message;
-    }
-  };
-
-})();
-</script>
-
-</body>
+    <!-- Keep in mind that the jsDelivr CDN is used for demonstration, it's not intended to be used in production! -->
+    <script src="https://cdn.jsdelivr.net/npm/@microblink/blinkid-in-browser-sdk@v6.13.3/dist/blinkid-sdk.js"></script>
+    <script src="app.js"></script>
 </html>
