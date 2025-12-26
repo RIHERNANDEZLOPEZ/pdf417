@@ -39,6 +39,11 @@
     <h2>🔍 Prueba tu Azure Vision</h2>
 
     <div>
+        <h3>2. key:</h3>
+        <input type="password" id="key">
+    </div>
+
+    <div>
         <h3>2. Selecciona una imagen:</h3>
         <input type="file" id="imageInput" accept="image/*">
     </div>
@@ -52,7 +57,9 @@
 
     <script>
         const endpoint = "https://vision-licencias-usa.cognitiveservices.azure.com"; // document.getElementById('endpoint').value.trim();
-        const key = "9VLWIg6OlA52Z0lCt1agAH3pOFL9oYE7boL2jf0OuFiVgWhuCY46JQQJ99BLACYeBjFXJ3w3AAAFACOGX4iv"; //document.getElementById('key').value.trim();
+       
+        var key = $('#key').val();
+       
 
         async function sendToAzure() {
 
@@ -62,7 +69,7 @@
 
             const response = await fetch(
                 endpoint + "/vision/v3.2/read/analyze",
-              //  endpoint + "/vision/v3.2/ocr",
+                //  endpoint + "/vision/v3.2/ocr",
                 {
                     method: "POST",
                     headers: {
@@ -72,12 +79,12 @@
                     body: file // ✅ binario real
                 }
             );
-           
-            if (response.status >299) {
+
+            if (response.status > 299) {
                 const err = await response.text();
                 console.log(err);
             } else {
-              
+
                 const operationUrl = response.headers.get("Operation-Location");
 
                 let result;
@@ -127,7 +134,7 @@
                         <p><small>Respuesta completa en consola (F12)</small></p>
                     `);
                 }
-               
+
 
             }
 
