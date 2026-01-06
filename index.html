@@ -4,25 +4,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>OCR & Vision Examples</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
-<body>
-    <h2>Escanear documentos OCR con:</h2>
-    <ul>
-        <li>
-            <a href="teseract.html">Teseract</a>
-        </li>
-        <li>
-            <a href="azurevision.html">Azure</a>
-        </li>
-        <li>
-            <a href="testdynamsoft.html">Test Dynamsoft</a>
-        </li>
-        <!-- <li>
-            <a href="dynamsoft/samples/index.html">Dynamsoft</a>
-        </li> -->
-    </ul>
+<body class="bg-gray-100 text-gray-800 font-sans">
+
+    <header class="text-center py-10">
+        <h1 class="text-4xl font-bold text-gray-900">OCR & Computer Vision</h1>
+        <p class="text-xl text-gray-600 mt-2">Explora diferentes ejemplos y herramientas</p>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4">
+        <ul class="space-y-6">
+
+            <!-- Tesseract.js -->
+            <li class="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition">
+                <a href="teseract.html" class="text-2xl font-semibold text-indigo-600 hover:underline">
+                    Tesseract.js
+                    <span class="bg-green-100 text-green-800 text-sm font-medium ml-2 px-2 py-1 rounded">FREE</span>
+                </a>
+                <p class="mt-3 text-gray-700">
+                    Tesseract.js es una librería JavaScript para Reconocimiento Óptico de Caracteres (OCR).
+                    Es un port de Tesseract, el motor OCR open-source originalmente desarrollado por HP
+                    y mantenido por Google.
+                </p>
+            </li>
+
+            <!-- Azure Vision -->
+            <li class="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition">
+                <a href="azurevision.html" class="text-2xl font-semibold text-indigo-600 hover:underline">
+                    Azure Computer Vision
+                    <span class="bg-yellow-100 text-yellow-800 text-sm font-medium ml-2 px-2 py-1 rounded">PAID</span>
+                </a>
+                <p class="mt-3 text-gray-700">
+                    Azure Computer Vision es un servicio en la nube dentro de Microsoft Azure AI.
+                    Proporciona algoritmos avanzados para analizar, interpretar y extraer información
+                    de imágenes y videos.
+                </p>
+            </li>
+
+            <!-- Dynamsoft PDF417 -->
+            <li class="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition">
+                <a href="testdynamsoft.html" class="text-2xl font-semibold text-indigo-600 hover:underline">
+                    Dynamsoft PDF417
+                    <span class="bg-yellow-100 text-yellow-800 text-sm font-medium ml-2 px-2 py-1 rounded">PAID</span>
+                </a>
+                <p class="mt-3 text-gray-700">
+                    Dynamsoft ofrece SDKs de alto rendimiento para lectura de códigos de barras,
+                    captura de documentos y escaneo de identificación. Su solución PDF417 se usa
+                    comúnmente para licencias y documentos de identidad.
+                </p>
+            </li>
+
+        </ul>
+    </main>
+
+    <footer class="text-center text-gray-500 text-sm py-8">
+        © 2025 OCR & Vision Examples. All rights reserved.
+    </footer>
+
 </body>
 
 </html>
