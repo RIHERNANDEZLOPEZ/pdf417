@@ -57,9 +57,10 @@
 
     <script>
         const endpoint = "https://vision-licencias-usa.cognitiveservices.azure.com"; // document.getElementById('endpoint').value.trim();
-       
-        var key = $('#key').val();
-       
+        const keyInput = document.getElementById('key');
+        console.log(keyInput);
+        var key = keyInput.defaultValue;
+
 
         async function sendToAzure() {
 
