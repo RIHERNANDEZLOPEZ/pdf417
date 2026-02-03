@@ -43,7 +43,6 @@
                     <div class="bg-gray-50 border border-gray-200 rounded p-3">
                         <h3 class="text-sm font-medium text-gray-700">Resultado</h3>
                         <div id="license-result" class="mt-2 text-lg font-semibold text-indigo-700">— Esperando —</div>
-                        <div id="raw-result" class="mt-2 text-xs text-gray-500 break-words"></div>
                     </div>
 
                 </div>
@@ -85,11 +84,10 @@
 
                 setStatus('Listo', 'text-green-600');
 
-                // hide raw result area (we only show parsed license)
-                $('#raw-result').hide();
 
                 // helper: try to extract a license/id from SDK result
                 function extractLicenseFromResult(r){
+                    console.log(formattedJSON);
                     // prefer formattedJSON if present
                     if(r.formattedJSON){
                         try{
@@ -178,7 +176,6 @@
                     started=true;
                     setStatus('Escaneando', 'text-yellow-600');
                     $('#license-result').text('— Escaneando —');
-                    $('#raw-result').text('');
                 }catch(e){console.error(e); setStatus('Error', 'text-red-600'); }
             });
 
@@ -189,7 +186,12 @@
             $('#restart-btn').on('click', function(){
                 if(Barkoder){
                     try{ Barkoder.stopScanner(); }catch(e){}
-                    setTimeout(function(){ Barkoder.startScanner(scanCallback); started=true; setStatus('Escaneando', 'text-yellow-600'); $('#license-result').text('— Escaneando —'); $('#raw-result').text(''); }, 300);
+                    setTimeout(function(){ 
+                        Barkoder.startScanner(scanCallback); started=true; 
+                        setStatus('Escaneando', 'text-yellow-600'); 
+                        $('#license-result').text('— Escaneando —'); 
+                    
+                 }, 300);
                 }
             });
         });
