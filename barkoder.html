@@ -90,7 +90,6 @@
                     // prefer formattedJSON if present
                     if(r.formattedJSON){
                         try{
-                            console.log('Parsed JSON:', r);
                             var obj = JSON.parse(r.formattedJSON);
                         }catch(e){ obj = null; }
                         if(obj){
@@ -140,6 +139,7 @@
                     try{
                         var count = r.resultsCount ?? r.results?.length ?? 0;
                         if(count>0){
+                            console.log('result: ',r);
                             var license = extractLicenseFromResult(r);
                             if(license){
                                 $('#license-result').text(license);
