@@ -46,7 +46,6 @@
                         <div id="raw-result" class="mt-2 text-xs text-gray-500 break-words"></div>
                     </div>
 
-                    <div class="text-xs text-gray-500">Tip: Sirve la carpeta con un servidor local (p.ej. <code>python -m http.server</code>) para evitar bloqueos CORS con el archivo .wasm.</div>
                 </div>
             </div>
         </div>
@@ -73,27 +72,88 @@
                 Barkoder = await BarkoderSDK.initialize('PEmBIohr9EZXgCkySoetbwP4gvOfMcGzgxKPL2X6uqPSaiOA56KejR4lihaKiwhXE14lCGoY9GXF7G6aUT6-o7ByFtm45Ch3hDCWNgLJMtairfwHxN4HF1nyiD-cG-Tv1yp3-kRgHlavYStEYAKpG9gbTU-49gqrFFM31_zivLAY_DOF8a8oY5LgtApqW9b3vW3uPnxuNrH_-W5eeMq89E87XKik5fk1FbWdknkdn4iCtpSJgBKKs7E-oqm1XTGY7LkoEUgsH_GcpjjQD5S8OencJYlsojZaxI3sO3_KMYjapYyBzuCZBxxYLjfI-LA2GMdeftu1ef6zOSlST035Bg..');
 
                 Barkoder.setEnabledDecoders(Barkoder.constants.Decoders.PDF417);
-                Barkoder.setCameraResolution(Barkoder.constants.CameraResolution.FHD);
-                Barkoder.setDecodingSpeed(Barkoder.constants.DecodingSpeed.Normal);
+                // prefer faster, lower-resolution settings for realtime performance
+                Barkoder.setCameraResolution(Barkoder.constants.CameraResolution.HD);
+                Barkoder.setDecodingSpeed(Barkoder.constants.DecodingSpeed.Fast);
                 Barkoder.setContainerOptions({ width: 640, height: 360, overrideSize: false, useFallbackSize: true });
+                // performance tuning
+                if(typeof Barkoder.setMaximumResultsCount==='function') Barkoder.setMaximumResultsCount(1);
+                if(typeof Barkoder.setContinuous==='function') Barkoder.setContinuous(false);
+                if(typeof Barkoder.setDuplicatesDelayMs==='function') Barkoder.setDuplicatesDelayMs(500);
 
                 $('#barkoder-container').css({width:'100%',height:'100%'});
 
                 setStatus('Listo', 'text-green-600');
+
+                // hide raw result area (we only show parsed license)
+                $('#raw-result').hide();
+
+                // helper: try to extract a license/id from SDK result
+                function extractLicenseFromResult(r){
+                    // prefer formattedJSON if present
+                    if(r.formattedJSON){
+                        try{
+                            var obj = JSON.parse(r.formattedJSON);
+                        }catch(e){ obj = null; }
+                        if(obj){
+                            // try obvious key names first
+                            var keys = Object.keys(obj||{});
+                            for(var i=0;i<keys.length;i++){
+                                var k = keys[i];
+                                if(/licen|license|licencia|doc|id|numero|number|dni|dl/i.test(k)){
+                                    var v = obj[k];
+                                    if(typeof v==='string' && v.trim().length>0) return v.trim();
+                                    if(typeof v==='number') return String(v);
+                                }
+                            }
+                            // deep search for first string-like value
+                            function deepFind(o){
+                                if(typeof o==='string' && o.trim().length>0) return o.trim();
+                                if(typeof o==='number') return String(o);
+                                if(typeof o==='object' && o!==null){
+                                    for(var kk in o){ if(Object.prototype.hasOwnProperty.call(o,kk)){
+                                        var res = deepFind(o[kk]); if(res) return res;
+                                    }}
+                                }
+                                return null;
+                            }
+                            var found = deepFind(obj);
+                            if(found) return found;
+                        }
+                    }
+
+                    // fallback to formattedText / textualData
+                    var text = r.formattedText || r.textualData || (r.results && r.results[0] && (r.results[0].textualData || r.results[0].formattedText)) || '';
+                    if(text){
+                        // simple heuristic: find the longest alphanumeric token of reasonable length
+                        var tokens = text.split(/\s|,|\n|\t|:|;/).map(t=>t.trim()).filter(Boolean);
+                        tokens.sort(function(a,b){return b.length-a.length;});
+                        for(var j=0;j<tokens.length;j++){
+                            var t = tokens[j];
+                            if(/[A-Za-z0-9\-]{4,30}/.test(t)) return t;
+                        }
+                        return text.trim();
+                    }
+                    return null;
+                }
 
                 // define scan callback
                 scanCallback = function(r){
                     try{
                         var count = r.resultsCount ?? r.results?.length ?? 0;
                         if(count>0){
-                            var first = (r.results && r.results[0]) || r;
-                            var text = first.textualData || first.formattedText || r.textualData || r.formattedText || '';
-                            $('#license-result').text(text || 'Sin texto');
-                            $('#raw-result').text(JSON.stringify(r,null,2));
-                            // stop camera
-                            Barkoder.stopScanner();
-                            started=false;
-                            setStatus('Detectado', 'text-green-600');
+                            var license = extractLicenseFromResult(r);
+                            if(license){
+                                $('#license-result').text(license);
+                                // stop camera
+                                try{ Barkoder.stopScanner(); }catch(e){}
+                                started=false;
+                                setStatus('Detectado', 'text-green-600');
+                            } else {
+                                // nothing extracted, show generic message
+                                $('#license-result').text('Resultado recibido (no se pudo extraer licencia)');
+                                setStatus('Detectado', 'text-green-600');
+                            }
                         }
                     }catch(e){console.error(e);} 
                 };
