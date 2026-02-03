@@ -129,7 +129,13 @@
                             var t = tokens[j];
                             if(/[A-Za-z0-9\-]{4,30}/.test(t)) return t;
                         }
-                        return text.trim();
+                        text= text.trim();
+                        var idxDAQ = text.indexOf('DAQ');;
+                        if(idxDAQ>=0 ){
+                            var daqCode = text.split('DAQ')[1].trim();
+                            if(daqCode.length>0) return daqCode;
+                        }
+
                     }
                     return null;
                 }
