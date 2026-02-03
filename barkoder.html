@@ -87,10 +87,10 @@
 
                 // helper: try to extract a license/id from SDK result
                 function extractLicenseFromResult(r){
-                    console.log(formattedJSON);
                     // prefer formattedJSON if present
                     if(r.formattedJSON){
                         try{
+                            console.log('Parsed JSON:', r);
                             var obj = JSON.parse(r.formattedJSON);
                         }catch(e){ obj = null; }
                         if(obj){
